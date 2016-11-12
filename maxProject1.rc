@@ -43,7 +43,7 @@ BEGIN
     PUSHBUTTON      "Close",IDC_CLOSE,29,233,50,14
     LTEXT           "Average Brightness:",IDC_STATUS,9,142,89,11,SS_SUNKEN
     LTEXT           "Brightness Ratio:",IDC_STATIC,9,171,54,8
-    LTEXT           "1. Render frame range to analyze brightness\r\n\r\n2. Select camera object and apply modifier",IDC_STATIC,9,4,81,43,SS_SUNKEN
+    LTEXT           "version 0.1\r\n1. Render frame range to analyze brightness\r\n2. Select camera object and apply modifier",IDC_STATIC,9,4,81,43,SS_SUNKEN
     LTEXT           "From:",IDC_STATIC,21,93,18,8
     LTEXT           "To:",IDC_STATIC,27,106,12,8
     GROUPBOX        "Calculate",IDC_STATIC,4,52,99,106

@@ -41,6 +41,7 @@ public:
 	}
 
 	bool CheckWindowsMessages(HWND hWnd);
+	void TestFunc();
 	void RenderFrames();
 
 private:
@@ -130,6 +131,59 @@ bool renderHistogram::CheckWindowsMessages(HWND hWnd)
   return !messageFilter.Aborted();
 }
 
+void renderHistogram::TestFunc()
+{
+	Renderer *renderer = ip->GetCurrentRenderer(false);
+	int numBlks = renderer->NumParamBlocks(); 
+	DebugPrint(_M("renderer->NumParamBlocks %d\r\n"), numBlks);
+	for (int i=0; i<numBlks; i++) {
+		auto pBlock = renderer->GetParamBlock(i);
+		DebugPrint(_M("paramBlock Name %s\r\n"), pBlock->GetLocalName());
+		int numParams = pBlock->NumParams();
+		DebugPrint(_M("var->NumParams() %d\r\n"), numParams);
+		Interval inf; // = ip->GetAnimRange();
+		inf.SetInfinite();
+		auto pDesc = pBlock->GetDesc();
+		DebugPrint(_M("pDesc %s\r\n"), pDesc->int_name);
+		int descCount = pDesc->Count();
+		DebugPrint(_M("descCount %d\r\n"), descCount);
+		for(int j=0; j<descCount; j++) {
+			auto pId = pBlock->IndextoID(j);
+			auto& pDef1 = pBlock->GetParamDef(pId);
+			DebugPrint(_M("pDef name %s\r\n"), pDef1.int_name);
+			DebugPrint(_M("pDef type %d\r\n"), pDef1.type);
+			switch (pDef1.type) {
+			case TYPE_FLOAT: 
+				DebugPrint(_M("pDef value %f\r\n"), pBlock->GetFloat(pId, ip->GetTime(), inf));
+				break;
+			case TYPE_BOOL:
+			case TYPE_INT:
+				DebugPrint(_M("pDef value %d\r\n"), pBlock->GetInt(pId, ip->GetTime(), inf));
+				break;
+			case TYPE_STRING:
+				DebugPrint(_M("pDef value %s\r\n"), pBlock->GetStr(pId, ip->GetTime(), inf));
+				break;
+			}
+			//auto pDef2 = pDesc->GetParamDefByIndex(j);
+			//DebugPrint(_M("pDef2 name %s\r\n"), pDef2->int_name);
+			//DebugPrint(_M("pDef2 type %d\r\n"), pDef2->type);
+		}
+		auto classDesc = pBlock->GetDesc()->cd;
+		int numInt = classDesc->NumInterfaces();
+		DebugPrint(_M("classDesc->NumInterfaces() %d\r\n"), numInt);
+		for(int j=0; j<numInt; j++) {
+			auto intface = classDesc->GetInterfaceAt(j);
+			auto fpdesc = intface->GetDesc();
+			DebugPrint(_M("fpInterface %s\r\n"), fpdesc->internal_name);
+			DebugPrint(_M("numFunctions %d\r\n"), fpdesc->functions.Count());
+			for(int k=0; k<fpdesc->functions.Count(); k++) {
+				auto fnc = fpdesc->functions[k];
+				DebugPrint(_M("function %s\r\n"), fnc->internal_name);
+			}
+		}
+	}
+}
+
 void renderHistogram::RenderFrames()
 {
 	//open renderer
@@ -207,6 +261,7 @@ INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 			GetInstance()->RenderFrames();
 			break;
 		case IDC_APPLYCAMERA:
+			GetInstance()->TestFunc();
 			//check if camera is selected
 			//check if average values are calculated
 			//create modifier
