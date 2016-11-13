@@ -14,6 +14,7 @@
 
 #include "maxProject1.h"
 #include "WindowsMessageFilter.h"
+#include "notify.h"
 
 #define renderHistogram_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
 
@@ -131,6 +132,11 @@ bool renderHistogram::CheckWindowsMessages(HWND hWnd)
   return !messageFilter.Aborted();
 }
 
+static DWORD WINAPI fn(LPVOID arg)
+{
+    return(0);
+}
+
 void renderHistogram::TestFunc()
 {
 	Renderer *renderer = ip->GetCurrentRenderer(false);
@@ -186,13 +192,11 @@ void renderHistogram::TestFunc()
 
 void renderHistogram::RenderFrames()
 {
+	//check that camera view is selected (or just camera object selected?)
 	//open renderer
 	//remember current parameters
 	//set draft quality parameters
-	//hook the postframe callback
-	//hook the afterrender callback (which removes all the hooks)
 	//start rendering
-	//Interface *ip = GetCOREInterface();
 	ViewParams vp;
 	INode *cam = ip->GetViewExp(NULL).GetViewCamera();
 	
@@ -206,20 +210,32 @@ void renderHistogram::RenderFrames()
 		bi.SetAspect(1.0f);
 		bm = TheManager->Create(&bi);
 		}
-   bm->Display(_T("AutoExposure"), BMM_RND);
+	bm->Display(_T("AutoExposure"), BMM_RND);
 
 	Interval frames = ip->GetAnimRange();
 	TimeValue startFrame = frames.Start();
 	TimeValue endFrame = frames.End();
 	int delta = GetTicksPerFrame();
-	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL); //, 320, 240); 
+	LPVOID arg = nullptr;
+	ip->ProgressStart(_M("Calculating Brightness"), TRUE, fn, arg);
+	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL); //, 320, 240);
 	for (int frame = startFrame; frame <= endFrame; frame += delta)
 	{
+		ip->ProgressUpdate((int)((float)frame/frames.Duration() * 100.0f));
 		ip->CurRendererRenderFrame(frame, bm);
+		if (ip->GetCancel()) {
+            int retval = MessageBox(ip->GetMAXHWnd(), _M("Really Cancel?"), _M("Question"), MB_ICONQUESTION | MB_YESNO);
+            if (retval == IDYES)
+                break;
+            else if (retval == IDNO)
+                ip->SetCancel(FALSE);
+        }
+
 		if (!CheckWindowsMessages(ip->GetMAXHWnd()))
 			break;
 	}
 	ip->CloseCurRenderer();
+	ip->ProgressEnd();
 	bm->DeleteThis();
 }
 

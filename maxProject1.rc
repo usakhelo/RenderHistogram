@@ -25,7 +25,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Dialog
 //
 
-IDD_PANEL DIALOGEX 0, 0, 107, 251
+IDD_PANEL DIALOGEX 0, 0, 107, 270
 STYLE DS_SETFONT | WS_CHILD | WS_VISIBLE
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
@@ -36,18 +36,19 @@ BEGIN
     CONTROL         "",IDC_EDIT_TO,"CustEdit",WS_TABSTOP,42,106,35,10
     CONTROL         "",IDC_SPIN_TO,"SpinnerControl",0x0,78,106,7,10
     PUSHBUTTON      "Render",IDC_DORENDER,29,123,50,14
-    CONTROL         "",IDC_EDIT_RATIO,"CustEdit",WS_TABSTOP,44,181,35,10
-    CONTROL         "",IDC_SPIN_RATIO,"SpinnerControl",0x0,80,181,7,10
-    CONTROL         "Smooth Animation Curve",IDC_C_SMOOTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,195,91,10
-    PUSHBUTTON      "Apply Modifier",IDC_APPLYCAMERA,29,212,50,14
-    PUSHBUTTON      "Close",IDC_CLOSE,29,233,50,14
-    LTEXT           "Average Brightness:",IDC_STATUS,9,142,89,11,SS_SUNKEN
-    LTEXT           "Brightness Ratio:",IDC_STATIC,9,171,54,8
+    CONTROL         "",IDC_EDIT_RATIO,"CustEdit",WS_TABSTOP,44,199,35,10
+    CONTROL         "",IDC_SPIN_RATIO,"SpinnerControl",0x0,80,199,7,10
+    CONTROL         "Smooth Animation Curve",IDC_C_SMOOTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,213,91,10
+    PUSHBUTTON      "Apply Modifier",IDC_APPLYCAMERA,29,230,50,14
+    PUSHBUTTON      "Close",IDC_CLOSE,29,252,50,14
+    LTEXT           "Highest Brightness:",IDC_STATUS,9,142,89,11,SS_SUNKEN
+    LTEXT           "Target Brightness:",IDC_STATIC,9,189,89,8
     LTEXT           "version 0.1\r\n1. Render frame range to analyze brightness\r\n2. Select camera object and apply modifier",IDC_STATIC,9,4,81,43,SS_SUNKEN
     LTEXT           "From:",IDC_STATIC,21,93,18,8
     LTEXT           "To:",IDC_STATIC,27,106,12,8
-    GROUPBOX        "Calculate",IDC_STATIC,4,52,99,106
-    GROUPBOX        "Modifier",IDC_STATIC,4,160,99,71
+    GROUPBOX        "Calculate",IDC_STATIC,4,52,99,122
+    GROUPBOX        "Modifier",IDC_STATIC,4,178,99,71
+    LTEXT           "Lowest Brightness:",IDC_STATUS2,9,156,89,11,SS_SUNKEN
 END
 
 
@@ -66,7 +67,7 @@ BEGIN
         VERTGUIDE, 9
         VERTGUIDE, 98
         TOPMARGIN, 4
-        BOTTOMMARGIN, 247
+        BOTTOMMARGIN, 266
     END
 END
 #endif    // APSTUDIO_INVOKED
