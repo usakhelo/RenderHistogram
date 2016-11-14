@@ -19,7 +19,8 @@
 #define IDC_DORENDER                    1005
 #define IDC_APPLYCAMERA                 1006
 #define IDC_STATUS                      1007
-#define IDC_STATUS2                     1008
+#define IDC_HI_BRIGHT                   1007
+#define IDC_LOW_BRIGHT                  1008
 #define IDC_COLOR                       1456
 #define IDC_EDIT                        1490
 #define IDC_EDIT_FROM                   1490

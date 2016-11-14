@@ -15,7 +15,9 @@
 #include "maxProject1.h"
 #include "WindowsMessageFilter.h"
 #include "notify.h"
+#include "modstack.h"
 #include <vector>
+#include <algorithm>
 
 #define renderHistogram_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
 
@@ -139,6 +141,35 @@ static DWORD WINAPI fn(LPVOID arg)
 
 void renderHistogram::ApplyModifier()
 {
+	if (ip->GetSelNodeCount() > 1 || ip->GetSelNodeCount() < 1)
+		return;
+
+	INode *node;
+	node = ip->GetSelNode(0);
+
+	Object *obj = node->GetObjectRef();
+
+	if (!obj)
+		return;
+
+	if (obj->SuperClassID() != CAMERA_CLASS_ID)
+		return;	
+
+	IDerivedObject *dobj = CreateDerivedObject(obj);
+
+	Modifier *coronaCameraMod = (Modifier *)GetCOREInterface()->CreateInstance(
+		OSM_CLASS_ID, Class_ID(-1551416164,502132111));
+
+	//IParamBlock2* iNormSplineBlock = ((Animatable*)coronaCameraMod)->GetParamBlockByID(nspline_params);
+	//assert(iNormSplineBlock);
+
+	//iNormSplineBlock->SetValue(nspline_length, t, nLength);
+
+	//coronaCameraMod->SetProperty();
+
+	dobj->AddModifier(coronaCameraMod);
+
+	node->SetObjectRef(dobj);
 }
 
 void renderHistogram::TestFunc()
@@ -285,8 +316,9 @@ void renderHistogram::RenderFrames(bool isAnimRange, int fromFrame=0, int toFram
 		endFrame = toFrame * GetTicksPerFrame();
 		duration = endFrame - startFrame + 1;
 	}
-	LPVOID arg = nullptr;
+	brightnessArray.empty();
 	brightnessArray.reserve(duration / GetTicksPerFrame());
+	LPVOID arg = nullptr;
 	ip->ProgressStart(_M("Calculating Average Brightness"), TRUE, fn, arg);
 	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL);
 	for (int frame = startFrame; frame <= endFrame; frame += delta)
@@ -321,35 +353,36 @@ INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 {
 	bool isAnimRange;
 	int fromFrame, toFrame;
+	renderHistogram* instance = GetInstance();
 
 	switch (msg) 
 	{
 	case WM_INITDIALOG:
-		renderHistogram::GetInstance()->Init(hWnd);
-		GetInstance()->fromFrame = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_FROM));
-		GetInstance()->fromFrame->SetScale(1.0f);
-		GetInstance()->fromFrame->SetLimits(-1000000, 1000000);
-		GetInstance()->fromFrame->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_FROM), EDITTYPE_INT);
-		GetInstance()->fromFrame->SetResetValue(0);
+		instance->Init(hWnd);
+		instance->fromFrame = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_FROM));
+		instance->fromFrame->SetScale(1.0f);
+		instance->fromFrame->SetLimits(-1000000, 1000000);
+		instance->fromFrame->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_FROM), EDITTYPE_INT);
+		instance->fromFrame->SetResetValue(0);
 
-		GetInstance()->toFrame = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TO));
-		GetInstance()->toFrame->SetScale(1.0f);
-		GetInstance()->toFrame->SetLimits(-1000000, 1000000);
-		GetInstance()->toFrame->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
-		GetInstance()->toFrame->SetResetValue(0);
+		instance->toFrame = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TO));
+		instance->toFrame->SetScale(1.0f);
+		instance->toFrame->SetLimits(-1000000, 1000000);
+		instance->toFrame->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
+		instance->toFrame->SetResetValue(0);
 
-		GetInstance()->EnableRangeCtrls(hWnd, false);
+		instance->EnableRangeCtrls(hWnd, false);
 
-		GetInstance()->targetBrightness = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_RATIO));
-		GetInstance()->targetBrightness->SetScale(1.0f);
-		GetInstance()->targetBrightness->SetLimits(-1000.0f, 1000.0f);
-		GetInstance()->targetBrightness->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_RATIO), EDITTYPE_FLOAT);
-		GetInstance()->targetBrightness->SetResetValue(1.0f);
-		GetInstance()->targetBrightness->SetValue(1.0f, FALSE);
+		instance->targetBrightness = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_RATIO));
+		instance->targetBrightness->SetScale(1.0f);
+		instance->targetBrightness->SetLimits(-1000.0f, 1000.0f);
+		instance->targetBrightness->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_RATIO), EDITTYPE_FLOAT);
+		instance->targetBrightness->SetResetValue(1.0f);
+		instance->targetBrightness->SetValue(1.0f, FALSE);
 		break;
 
 	case WM_DESTROY:
-		renderHistogram::GetInstance()->Destroy(hWnd);
+		instance->Destroy(hWnd);
 		break;
 
 	case WM_COMMAND:
@@ -357,34 +390,44 @@ INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 
 		case IDC_DORENDER:
 			isAnimRange = IsDlgButtonChecked(hWnd, IDC_R_ACTIVETIME) == BST_CHECKED;
-			fromFrame = GetInstance()->fromFrame->GetIVal();
-			toFrame = GetInstance()->toFrame->GetIVal();
-			GetInstance()->RenderFrames(isAnimRange, fromFrame, toFrame);
+			fromFrame = instance->fromFrame->GetIVal();
+			toFrame = instance->toFrame->GetIVal();
+			instance->RenderFrames(isAnimRange, fromFrame, toFrame);
+			if (instance->brightnessArray.size() > 0)
+			{
+				std::sort(instance->brightnessArray.begin(), instance->brightnessArray.end());
+				WStr str; 
+				str.printf(_T("Lowest Value: %f"), instance->brightnessArray.front());
+				SetDlgItemText(hWnd, IDC_LOW_BRIGHT, str.ToMCHAR());
+				str.printf(_T("Highest Value: %f"), instance->brightnessArray.back());
+				SetDlgItemText(hWnd, IDC_HI_BRIGHT, str.ToMCHAR());
+			}
 			break;
 		case IDC_APPLYCAMERA:
-			GetInstance()->TestFunc();
+			//instance->TestFunc();
 			//check if camera is selected (or take rendered camera)
 			//check if average values are calculated
 			//create modifier
 			//create animated paramater
 			//apply to camera
+			instance->ApplyModifier();
 			break;
 
 		case IDC_R_ACTIVETIME:
-			GetInstance()->EnableRangeCtrls(hWnd, false);
+			instance->EnableRangeCtrls(hWnd, false);
 			break;
 
 		case IDC_R_RANGE:
-			GetInstance()->EnableRangeCtrls(hWnd, true);
+			instance->EnableRangeCtrls(hWnd, true);
 			break;
 
 		case IDC_CLOSE:
 			EndDialog(hWnd, FALSE);
-			ReleaseISpinner(GetInstance()->fromFrame);
-			ReleaseISpinner(GetInstance()->toFrame);
-			ReleaseISpinner(GetInstance()->targetBrightness);
-			if (GetInstance()->iu)
-				GetInstance()->iu->CloseUtility();
+			ReleaseISpinner(instance->fromFrame);
+			ReleaseISpinner(instance->toFrame);
+			ReleaseISpinner(instance->targetBrightness);
+			if (instance->iu)
+				instance->iu->CloseUtility();
 			break;
 		}
 		break;
