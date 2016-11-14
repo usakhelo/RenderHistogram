@@ -112,6 +112,12 @@ BEGIN
     IDS_CLASS_NAME          "AutoExposureUtility"
     IDS_PARAMS              "Parameters"
     IDS_SPIN                "Spin"
+    IDS_CAM_ERROR           "Not a Camera Viewport"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_REND_ERROR          "Corona is not current renderer"
 END
 
 #endif    // English (United States) resources

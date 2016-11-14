@@ -15,6 +15,7 @@
 #include "maxProject1.h"
 #include "WindowsMessageFilter.h"
 #include "notify.h"
+#include <vector>
 
 #define renderHistogram_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
 
@@ -41,24 +42,26 @@ public:
 		return &therenderHistogram; 
 	}
 
-	bool CheckWindowsMessages(HWND hWnd);
+	bool CheckWindowsMessages(HWND);
 	void TestFunc();
-	void RenderFrames();
+	void ApplyModifier();
+	void RenderFrames(bool, int, int);
+	float CalculateMeanBrightness(Bitmap*);
+	void EnableRangeCtrls(HWND, bool);
 
 private:
-
 	static INT_PTR CALLBACK DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	ISpinnerControl*  fromFrame;
 	ISpinnerControl*  toFrame;
-	ISpinnerControl*  ratioVal;
+	ISpinnerControl*  targetBrightness;
 
 	HWND   hPanel;
 	IUtil* iu;
 	Interface *ip;
+	std::vector<float> brightnessArray;
 };
 
-class maxRndProgressCB;
 class renderHistogramClassDesc : public ClassDesc2 
 {
 public:
@@ -71,8 +74,6 @@ public:
 
 	const TCHAR* InternalName() 			{ return _T("renderHistogram"); }	// returns fixed parsable name (scripter-visible name)
 	HINSTANCE HInstance() 					{ return hInstance; }				// returns owning module handle
-
-
 };
 
 
@@ -80,7 +81,6 @@ ClassDesc2* GetrenderHistogramDesc() {
 	static renderHistogramClassDesc renderHistogramDesc;
 	return &renderHistogramDesc; 
 }
-
 
 //--- renderHistogram -------------------------------------------------------
 renderHistogram::renderHistogram()
@@ -127,14 +127,18 @@ void renderHistogram::Destroy(HWND /*handle*/)
 bool renderHistogram::CheckWindowsMessages(HWND hWnd)
 {
 	MaxSDK::WindowsMessageFilter messageFilter;
-  messageFilter.AddUnfilteredWindow(hWnd);
-  messageFilter.RunNonBlockingMessageLoop();
-  return !messageFilter.Aborted();
+	messageFilter.AddUnfilteredWindow(hWnd);
+	messageFilter.RunNonBlockingMessageLoop();
+	return !messageFilter.Aborted();
 }
 
 static DWORD WINAPI fn(LPVOID arg)
 {
-    return(0);
+	return(0);
+}
+
+void renderHistogram::ApplyModifier()
+{
 }
 
 void renderHistogram::TestFunc()
@@ -142,7 +146,7 @@ void renderHistogram::TestFunc()
 	Renderer *renderer = ip->GetCurrentRenderer(false);
 	int numBlks = renderer->NumParamBlocks(); 
 	DebugPrint(_M("renderer->NumParamBlocks %d\r\n"), numBlks);
-	for (int i=0; i<numBlks; i++) {
+	for (int i=0; i < numBlks; i++) {
 		auto pBlock = renderer->GetParamBlock(i);
 		DebugPrint(_M("paramBlock Name %s\r\n"), pBlock->GetLocalName());
 		int numParams = pBlock->NumParams();
@@ -190,7 +194,39 @@ void renderHistogram::TestFunc()
 	}
 }
 
-void renderHistogram::RenderFrames()
+float renderHistogram::CalculateMeanBrightness(Bitmap *bm)
+{
+	if (!bm)
+		return 0.0;
+
+	const double rY = 0.212655;
+	const double gY = 0.715158;
+	const double bY = 0.072187;
+	float maxLum = 0.0;
+	float sumLum = 0.0;
+	float result = 0.0;
+
+	int biWidth = bm->Width();
+	int biHeight = bm->Height();
+
+	BMM_Color_fl c1;
+
+	for (int i = 0; i < biWidth; i++)
+	{
+		for (int j = 0; j < biHeight; j++)
+		{
+			bm->GetPixels(i,j,1,&c1);
+			float lum = rY*c1.r + gY*c1.g + bY*c1.b;
+			sumLum += lum;
+		}
+	}
+
+	result = sumLum / (biWidth * biHeight);
+
+	return result;
+}
+
+void renderHistogram::RenderFrames(bool isAnimRange, int fromFrame=0, int toFrame=0)
 {
 	//check that camera view is selected (or just camera object selected?)
 	//open renderer
@@ -199,37 +235,72 @@ void renderHistogram::RenderFrames()
 	//start rendering
 	ViewParams vp;
 	INode *cam = ip->GetViewExp(NULL).GetViewCamera();
-	
+	if (!cam)
+	{
+		TSTR title = GetString(IDS_CLASS_NAME);
+		TSTR message = GetString(IDS_CAM_ERROR);
+		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
+		return;
+	}
+#pragma message(TODO("check for selected camera object too"))
+
+	//check if renderer is Corona
+	Renderer* currRenderer = ip->GetCurrentRenderer(false);
+	MSTR rendName;
+	currRenderer->GetClassName(rendName);
+	if (!rendName.StartsWith(_T("corona"), false))
+	{
+		TSTR title = GetString(IDS_CLASS_NAME);
+		TSTR message = GetString(IDS_REND_ERROR);
+		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
+		return;
+	}
+
+	int curWidth = ip->GetRendWidth();
+	int curHeight = ip->GetRendHeight();
+	float aspect = (float)curWidth / curHeight;
+
 	Bitmap *bm = NULL;
 	if (!bm) {
 		BitmapInfo bi;
 		bi.SetWidth(320);
-		bi.SetHeight(240);
+		bi.SetHeight((int)(320 / aspect));
 		bi.SetType(BMM_FLOAT_RGBA_32);
 		bi.SetFlags(MAP_HAS_ALPHA);
 		bi.SetAspect(1.0f);
 		bm = TheManager->Create(&bi);
-		}
-	bm->Display(_T("AutoExposure"), BMM_RND);
+	}
+	//bm->Display(_T("AutoExposure"), BMM_RND);
 
-	Interval frames = ip->GetAnimRange();
-	TimeValue startFrame = frames.Start();
-	TimeValue endFrame = frames.End();
+	TimeValue startFrame, endFrame;
+	int duration;
 	int delta = GetTicksPerFrame();
+	if (isAnimRange) {
+		Interval frames = ip->GetAnimRange();
+		startFrame = frames.Start();
+		endFrame = frames.End();
+		duration = (int)frames.Duration();
+	} else {
+		startFrame = fromFrame * GetTicksPerFrame();
+		endFrame = toFrame * GetTicksPerFrame();
+		duration = endFrame - startFrame + 1;
+	}
 	LPVOID arg = nullptr;
-	ip->ProgressStart(_M("Calculating Brightness"), TRUE, fn, arg);
-	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL); //, 320, 240);
+	brightnessArray.reserve(duration / GetTicksPerFrame());
+	ip->ProgressStart(_M("Calculating Average Brightness"), TRUE, fn, arg);
+	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL);
 	for (int frame = startFrame; frame <= endFrame; frame += delta)
 	{
-		ip->ProgressUpdate((int)((float)frame/frames.Duration() * 100.0f));
+		ip->ProgressUpdate((int)((float)frame/duration * 100.0f));
 		ip->CurRendererRenderFrame(frame, bm);
+		brightnessArray.push_back(CalculateMeanBrightness(bm));
 		if (ip->GetCancel()) {
-            int retval = MessageBox(ip->GetMAXHWnd(), _M("Really Cancel?"), _M("Question"), MB_ICONQUESTION | MB_YESNO);
-            if (retval == IDYES)
-                break;
-            else if (retval == IDNO)
-                ip->SetCancel(FALSE);
-        }
+			int retval = MessageBox(ip->GetMAXHWnd(), _M("Really Cancel?"), _M("Question"), MB_ICONQUESTION | MB_YESNO);
+			if (retval == IDYES)
+				break;
+			else if (retval == IDNO)
+				ip->SetCancel(FALSE);
+		}
 
 		if (!CheckWindowsMessages(ip->GetMAXHWnd()))
 			break;
@@ -239,8 +310,18 @@ void renderHistogram::RenderFrames()
 	bm->DeleteThis();
 }
 
+void renderHistogram::EnableRangeCtrls(HWND hWnd, bool state) {
+	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_FROM), state);
+	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_TO), state);
+	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_FROM), state);
+	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_TO), state);
+}
+
 INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	bool isAnimRange;
+	int fromFrame, toFrame;
+
 	switch (msg) 
 	{
 	case WM_INITDIALOG:
@@ -257,12 +338,14 @@ INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 		GetInstance()->toFrame->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
 		GetInstance()->toFrame->SetResetValue(0);
 
-		GetInstance()->ratioVal = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_RATIO));
-		GetInstance()->ratioVal->SetScale(1.0f);
-		GetInstance()->ratioVal->SetLimits(-1000.0f, 1000.0f);
-		GetInstance()->ratioVal->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_RATIO), EDITTYPE_FLOAT);
-		GetInstance()->ratioVal->SetResetValue(1.0f);
-		GetInstance()->ratioVal->SetValue(1.0f, FALSE);
+		GetInstance()->EnableRangeCtrls(hWnd, false);
+
+		GetInstance()->targetBrightness = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_RATIO));
+		GetInstance()->targetBrightness->SetScale(1.0f);
+		GetInstance()->targetBrightness->SetLimits(-1000.0f, 1000.0f);
+		GetInstance()->targetBrightness->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_RATIO), EDITTYPE_FLOAT);
+		GetInstance()->targetBrightness->SetResetValue(1.0f);
+		GetInstance()->targetBrightness->SetValue(1.0f, FALSE);
 		break;
 
 	case WM_DESTROY:
@@ -270,25 +353,36 @@ INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 		break;
 
 	case WM_COMMAND:
-#pragma message(TODO("React to the user interface commands."))
 		switch (LOWORD(wParam)) {
 
 		case IDC_DORENDER:
-			GetInstance()->RenderFrames();
+			isAnimRange = IsDlgButtonChecked(hWnd, IDC_R_ACTIVETIME) == BST_CHECKED;
+			fromFrame = GetInstance()->fromFrame->GetIVal();
+			toFrame = GetInstance()->toFrame->GetIVal();
+			GetInstance()->RenderFrames(isAnimRange, fromFrame, toFrame);
 			break;
 		case IDC_APPLYCAMERA:
 			GetInstance()->TestFunc();
-			//check if camera is selected
+			//check if camera is selected (or take rendered camera)
 			//check if average values are calculated
 			//create modifier
 			//create animated paramater
 			//apply to camera
 			break;
+
+		case IDC_R_ACTIVETIME:
+			GetInstance()->EnableRangeCtrls(hWnd, false);
+			break;
+
+		case IDC_R_RANGE:
+			GetInstance()->EnableRangeCtrls(hWnd, true);
+			break;
+
 		case IDC_CLOSE:
 			EndDialog(hWnd, FALSE);
 			ReleaseISpinner(GetInstance()->fromFrame);
 			ReleaseISpinner(GetInstance()->toFrame);
-			ReleaseISpinner(GetInstance()->ratioVal);
+			ReleaseISpinner(GetInstance()->targetBrightness);
 			if (GetInstance()->iu)
 				GetInstance()->iu->CloseUtility();
 			break;
@@ -296,7 +390,6 @@ INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 		break;
 
 	case WM_LBUTTONDOWN:
-
 	case WM_LBUTTONUP:
 	case WM_MOUSEMOVE:
 		GetCOREInterface()->RollupMouseMessage(hWnd,msg,wParam,lParam);
