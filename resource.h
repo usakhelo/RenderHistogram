@@ -10,6 +10,9 @@
 #define IDS_CAM_ERROR                   6
 #define IDD_PANEL                       101
 #define IDS_REND_ERROR                  101
+#define IDS_SELECTIONCOUNT_ERROR        102
+#define IDS_SELECTIONTYPE_ERROR         103
+#define IDS_SELECTION_ERROR             104
 #define IDC_CLOSEBUTTON                 1000
 #define IDC_DOSTUFF                     1000
 #define IDC_CLOSE                       1001

@@ -118,6 +118,9 @@ END
 STRINGTABLE
 BEGIN
     IDS_REND_ERROR          "Corona is not current renderer"
+    IDS_SELECTIONCOUNT_ERROR "Select one Camera object"
+    IDS_SELECTIONTYPE_ERROR "Select Camera object"
+    IDS_SELECTION_ERROR     "Camera is not selected"
 END
 
 #endif    // English (United States) resources

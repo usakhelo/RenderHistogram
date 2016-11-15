@@ -123,7 +123,6 @@ void renderHistogram::Init(HWND hWnd/*handle*/)
 
 void renderHistogram::Destroy(HWND /*handle*/)
 {
-
 }
 
 bool renderHistogram::CheckWindowsMessages(HWND hWnd)
@@ -142,7 +141,12 @@ static DWORD WINAPI fn(LPVOID arg)
 void renderHistogram::ApplyModifier()
 {
 	if (ip->GetSelNodeCount() > 1 || ip->GetSelNodeCount() < 1)
+	{
+		TSTR title = GetString(IDS_CLASS_NAME);
+		TSTR message = GetString(IDS_SELECTIONCOUNT_ERROR);
+		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
 		return;
+	}
 
 	INode *node;
 	node = ip->GetSelNode(0);
@@ -150,22 +154,38 @@ void renderHistogram::ApplyModifier()
 	Object *obj = node->GetObjectRef();
 
 	if (!obj)
+	{
+		TSTR title = GetString(IDS_CLASS_NAME);
+		TSTR message = GetString(IDS_SELECTION_ERROR);
+		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
 		return;
+	}
+
+	auto id1 = node->SuperClassID();
+	auto id2 = obj->SuperClassID();
 
 	if (obj->SuperClassID() != CAMERA_CLASS_ID)
-		return;	
+	{
+		TSTR title = GetString(IDS_CLASS_NAME);
+		TSTR message = GetString(IDS_SELECTIONTYPE_ERROR);
+		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
+		return;
+	}
 
 	IDerivedObject *dobj = CreateDerivedObject(obj);
 
 	Modifier *coronaCameraMod = (Modifier *)GetCOREInterface()->CreateInstance(
 		OSM_CLASS_ID, Class_ID(-1551416164,502132111));
 
-	//IParamBlock2* iNormSplineBlock = ((Animatable*)coronaCameraMod)->GetParamBlockByID(nspline_params);
-	//assert(iNormSplineBlock);
+	int count =((Animatable*)coronaCameraMod)->NumParamBlocks();
+	IParamBlock2* coronaModPBlock =((Animatable*)coronaCameraMod)->GetParamBlock(0);
+	assert(coronaModPBlock);
 
-	//iNormSplineBlock->SetValue(nspline_length, t, nLength);
-
-	//coronaCameraMod->SetProperty();
+	float EV = 1.5f;
+	BOOL enableEV = true;
+	bool result;
+	result = coronaModPBlock->SetValueByName<BOOL>( _T("overrideSimpleExposure"), enableEV, ip->GetTime());
+	result = coronaModPBlock->SetValueByName<float>( _T("simpleExposure"), EV, ip->GetTime());
 
 	dobj->AddModifier(coronaCameraMod);
 
