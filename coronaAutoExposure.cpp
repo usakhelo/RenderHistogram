@@ -12,50 +12,50 @@
 // AUTHOR: 
 //***************************************************************************/
 
-#include "maxProject1.h"
+#include "coronaAutoExposure.h"
 #include "WindowsMessageFilter.h"
 #include "notify.h"
 #include "modstack.h"
 #include <vector>
 #include <algorithm>
 
-#define renderHistogram_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
+#define CoronaAutoExposure_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
 
 
-class renderHistogramClassDesc : public ClassDesc2 
+class CoronaAutoExposureClassDesc : public ClassDesc2 
 {
 public:
 	int IsPublic() 							{ return TRUE; }
-	void* Create(BOOL loading = FALSE) 		{ return renderHistogram::GetInstance(); }
+	void* Create(BOOL loading = FALSE) 		{ return CoronaAutoExposure::GetInstance(); }
 	const TCHAR * ClassName() 				{ return GetString(IDS_CLASS_NAME); }
 	SClass_ID SuperClassID() 				{ return UTILITY_CLASS_ID; }
-	Class_ID ClassID() 						{ return renderHistogram_CLASS_ID; }
+	Class_ID ClassID() 						{ return CoronaAutoExposure_CLASS_ID; }
 	const TCHAR* Category() 				{ return GetString(IDS_CATEGORY); }
 
-	const TCHAR* InternalName() 			{ return _T("renderHistogram"); }	// returns fixed parsable name (scripter-visible name)
-	HINSTANCE HInstance() 					{ return hInstance; }				// returns owning module handle
+	const TCHAR* InternalName() 			{ return _T("CoronaAutoExposure"); }
+	HINSTANCE HInstance() 					{ return hInstance; }
 };
 
 
-ClassDesc2* GetrenderHistogramDesc() { 
-	static renderHistogramClassDesc renderHistogramDesc;
-	return &renderHistogramDesc; 
+ClassDesc2* GetCoronaAutoExposureDesc() { 
+	static CoronaAutoExposureClassDesc CoronaAutoExposureDesc;
+	return &CoronaAutoExposureDesc; 
 }
 
-//--- renderHistogram -------------------------------------------------------
-renderHistogram::renderHistogram()
+//--- CoronaAutoExposure -------------------------------------------------------
+CoronaAutoExposure::CoronaAutoExposure()
 	: hPanel(nullptr)
 	, iu(nullptr)
 {
 
 }
 
-renderHistogram::~renderHistogram()
+CoronaAutoExposure::~CoronaAutoExposure()
 {
 
 }
 
-void renderHistogram::BeginEditParams(Interface* ip,IUtil* iu) 
+void CoronaAutoExposure::BeginEditParams(Interface* ip,IUtil* iu) 
 {
 	this->iu = iu;
 	this->ip = ip;
@@ -67,23 +67,23 @@ void renderHistogram::BeginEditParams(Interface* ip,IUtil* iu)
 		0);
 }
 
-void renderHistogram::EndEditParams(Interface* ip,IUtil*)
+void CoronaAutoExposure::EndEditParams(Interface* ip,IUtil*)
 {
 	this->iu = nullptr;
 	ip->DeleteRollupPage(hPanel);
 	hPanel = nullptr;
 }
 
-void renderHistogram::Init(HWND hWnd/*handle*/)
+void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 {
 	CheckDlgButton(hWnd,IDC_R_ACTIVETIME,TRUE);
 }
 
-void renderHistogram::Destroy(HWND /*handle*/)
+void CoronaAutoExposure::Destroy(HWND /*handle*/)
 {
 }
 
-bool renderHistogram::CheckWindowsMessages(HWND hWnd)
+bool CoronaAutoExposure::CheckWindowsMessages(HWND hWnd)
 {
 	MaxSDK::WindowsMessageFilter messageFilter;
 	messageFilter.AddUnfilteredWindow(hWnd);
@@ -96,7 +96,7 @@ static DWORD WINAPI fn(LPVOID arg)
 	return(0);
 }
 
-void renderHistogram::ApplyModifier()
+void CoronaAutoExposure::ApplyModifier()
 {
 	if (ip->GetSelNodeCount() > 1 || ip->GetSelNodeCount() < 1)
 	{
@@ -178,7 +178,7 @@ void renderHistogram::ApplyModifier()
 	node->SetObjectRef(dobj);
 }
 
-void renderHistogram::TestFunc()
+void CoronaAutoExposure::TestFunc()
 {
 	Renderer *renderer = ip->GetCurrentRenderer(false);
 	int numBlks = renderer->NumParamBlocks();
@@ -228,7 +228,7 @@ void renderHistogram::TestFunc()
 	}
 }
 
-float renderHistogram::CalculateMeanBrightness(Bitmap *bm)
+float CoronaAutoExposure::CalculateMeanBrightness(Bitmap *bm)
 {
 	if (!bm)
 		return 0.0;
@@ -259,7 +259,7 @@ float renderHistogram::CalculateMeanBrightness(Bitmap *bm)
 	return result;
 }
 
-void renderHistogram::RenderFrames()
+void CoronaAutoExposure::RenderFrames()
 {
 	ViewParams vp;
 	INode *cam = ip->GetViewExp(NULL).GetViewCamera();
@@ -359,16 +359,16 @@ void renderHistogram::RenderFrames()
 	bm->DeleteThis();
 }
 
-void renderHistogram::EnableRangeCtrls(HWND hWnd, bool state) {
+void CoronaAutoExposure::EnableRangeCtrls(HWND hWnd, bool state) {
 	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_FROM), state);
 	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_TO), state);
 	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_FROM), state);
 	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_TO), state);
 }
 
-INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	renderHistogram* instance = GetInstance();
+	CoronaAutoExposure* instance = GetInstance();
 
 	switch (msg) 
 	{

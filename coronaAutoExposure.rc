@@ -109,7 +109,7 @@ STRINGTABLE
 BEGIN
     IDS_LIBDESCRIPTION      "Creates Histogram of rendered images"
     IDS_CATEGORY            "Corona Utilities"
-    IDS_CLASS_NAME          "AutoExposureUtility"
+    IDS_CLASS_NAME          "CoronaAutoExposure"
     IDS_PARAMS              "Parameters"
     IDS_SPIN                "Spin"
     IDS_CAM_ERROR           "Not a Camera Viewport"

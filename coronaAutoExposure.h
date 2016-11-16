@@ -28,12 +28,12 @@
 extern TCHAR *GetString(int id);
 extern HINSTANCE hInstance;
 
-class renderHistogram : public UtilityObj 
+class CoronaAutoExposure : public UtilityObj 
 {
 public:
 
-	renderHistogram();
-	virtual ~renderHistogram();
+	CoronaAutoExposure();
+	virtual ~CoronaAutoExposure();
 
 	void DeleteThis() { }
 
@@ -43,9 +43,9 @@ public:
 	void Init(HWND hWnd);
 	void Destroy(HWND hWnd);
 
-	static renderHistogram* GetInstance() { 
-		static renderHistogram therenderHistogram;
-		return &therenderHistogram; 
+	static CoronaAutoExposure* GetInstance() { 
+		static CoronaAutoExposure theCoronaAutoExposure;
+		return &theCoronaAutoExposure; 
 	}
 
 	bool CheckWindowsMessages(HWND);

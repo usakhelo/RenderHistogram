@@ -12,9 +12,9 @@
 // AUTHOR: 
 //***************************************************************************/
 
-#include "maxProject1.h"
+#include "coronaAutoExposure.h"
 
-extern ClassDesc2* GetrenderHistogramDesc();
+extern ClassDesc2* GetCoronaAutoExposureDesc();
 
 HINSTANCE hInstance;
 int controlsInit = FALSE;
@@ -55,7 +55,7 @@ __declspec( dllexport ) int LibNumberClasses()
 __declspec( dllexport ) ClassDesc* LibClassDesc(int i)
 {
 	switch(i) {
-		case 0: return GetrenderHistogramDesc();
+		case 0: return GetCoronaAutoExposureDesc();
 		default: return 0;
 	}
 }
