@@ -155,20 +155,20 @@ void renderHistogram::ApplyModifier()
 	BOOL enableEV = true;
 
 	ParamBlockDesc2* pbdesc = coronaModPBlock->GetDesc();
-  int param_index = pbdesc->NameToIndex(_T("simpleExposure"));
-  const ParamDef* param_def = pbdesc->GetParamDefByIndex(param_index);
-	
+	int param_index = pbdesc->NameToIndex(_T("simpleExposure"));
+	const ParamDef* param_def = pbdesc->GetParamDefByIndex(param_index);
+
 	Control *controller = (Control *) CreateInstance(CTRL_FLOAT_CLASS_ID,Class_ID(LININTERP_FLOAT_CLASS_ID,0)); 
 	coronaModPBlock->SetControllerByID(param_def->ID, 0, controller, true);
-	coronaModPBlock->SetValueByName<BOOL>( _T("overrideSimpleExposure"), true, 0);
-	
+	coronaModPBlock->SetValueByName<BOOL>( _T("overrideSimpleExposure"), enableEV, 0);
+
 	SuspendAnimate();
 	AnimateOn();
 	for (int frame = startFrame; frame <= endFrame; frame += delta)
 	{
-		float EV = 1.5f;// * (frame / 10);
+		float EV = 1.5f;
 		//controller->SetValue(frame, &EV, 1);
-    coronaModPBlock->SetValue(param_def->ID, frame, EV);
+		coronaModPBlock->SetValue(param_def->ID, frame, EV);
 		//coronaModPBlock->SetValueByName<float>( _T("simpleExposure"), EV, frame);
 	}
 	ResumeAnimate();
@@ -181,7 +181,7 @@ void renderHistogram::ApplyModifier()
 void renderHistogram::TestFunc()
 {
 	Renderer *renderer = ip->GetCurrentRenderer(false);
-	int numBlks = renderer->NumParamBlocks(); 
+	int numBlks = renderer->NumParamBlocks();
 	DebugPrint(_M("renderer->NumParamBlocks %d\r\n"), numBlks);
 	for (int i=0; i < numBlks; i++) {
 		auto pBlock = renderer->GetParamBlock(i);
@@ -211,9 +211,6 @@ void renderHistogram::TestFunc()
 				DebugPrint(_M("pDef value %s\r\n"), pBlock->GetStr(pId, ip->GetTime(), inf));
 				break;
 			}
-			//auto pDef2 = pDesc->GetParamDefByIndex(j);
-			//DebugPrint(_M("pDef2 name %s\r\n"), pDef2->int_name);
-			//DebugPrint(_M("pDef2 type %d\r\n"), pDef2->type);
 		}
 		auto classDesc = pBlock->GetDesc()->cd;
 		int numInt = classDesc->NumInterfaces();
@@ -264,11 +261,6 @@ float renderHistogram::CalculateMeanBrightness(Bitmap *bm)
 
 void renderHistogram::RenderFrames()
 {
-	//check that camera view is selected (or just camera object selected?)
-	//open renderer
-	//remember current parameters
-	//set draft quality parameters
-	//start rendering
 	ViewParams vp;
 	INode *cam = ip->GetViewExp(NULL).GetViewCamera();
 	if (!cam)
@@ -280,7 +272,6 @@ void renderHistogram::RenderFrames()
 	}
 #pragma message(TODO("check for selected camera object too"))
 
-	//check if renderer is Corona
 	Renderer* currRenderer = ip->GetCurrentRenderer(false);
 	MSTR rendName;
 	currRenderer->GetClassName(rendName);
@@ -323,6 +314,22 @@ void renderHistogram::RenderFrames()
 	}
 	brightnessArray.empty();
 	brightnessArray.reserve(duration / GetTicksPerFrame());
+
+	Renderer *renderer = ip->GetCurrentRenderer(false);
+	auto pBlock = renderer->GetParamBlock(0);
+	BOOL mbCam, mbGeo, dofUse;
+	bool result;
+	Interval inf;
+	inf.SetInfinite();
+	result = pBlock->GetValueByName<BOOL>(_T("mb.useCamera"), ip->GetTime(), mbCam, inf);
+	result = pBlock->GetValueByName<BOOL>(_T("mb.useGeometry"), ip->GetTime(), mbGeo, inf);
+	result = pBlock->GetValueByName<BOOL>(_T("dof.use"), ip->GetTime(), dofUse, inf);
+
+	BOOL off = false;
+	result = pBlock->SetValueByName<BOOL>(_T("mb.useCamera"), off, ip->GetTime());
+	result = pBlock->SetValueByName<BOOL>(_T("mb.useGeometry"), off, ip->GetTime());
+	result = pBlock->SetValueByName<BOOL>(_T("dof.use"), off, ip->GetTime());
+
 	LPVOID arg = nullptr;
 	ip->ProgressStart(_M("Calculating Average Brightness"), TRUE, fn, arg);
 	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL);
@@ -344,6 +351,11 @@ void renderHistogram::RenderFrames()
 	}
 	ip->CloseCurRenderer();
 	ip->ProgressEnd();
+
+	result = pBlock->SetValueByName<BOOL>(_T("mb.useCamera"), mbCam, ip->GetTime());
+	result = pBlock->SetValueByName<BOOL>(_T("mb.useGeometry"), mbGeo, ip->GetTime());
+	result = pBlock->SetValueByName<BOOL>(_T("dof.use"), dofUse, ip->GetTime());
+
 	bm->DeleteThis();
 }
 
