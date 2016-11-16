@@ -20,8 +20,6 @@
 #include <iparamb2.h>
 #include <iparamm2.h>
 #include <maxtypes.h>
-#include <vector>
-
 
 #include <utilapi.h>
 
@@ -68,5 +66,5 @@ private:
 	HWND   hPanel;
 	IUtil* iu;
 	Interface *ip;
-	std::vector<float> brightnessArray;
+	MaxSDK::Array<float> brightnessArray2;
 };

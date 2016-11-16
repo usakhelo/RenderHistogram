@@ -1,14 +1,7 @@
 //**************************************************************************/
-// Copyright (c) 1998-2007 Autodesk, Inc.
-// All rights reserved.
-// 
-// These coded instructions, statements, and computer programs contain
-// unpublished proprietary information written by Autodesk, Inc., and are
-// protected by Federal copyright law. They may not be disclosed to third
-// parties or copied or duplicated in any form, in whole or in part, without
-// the prior written consent of Autodesk, Inc.
+//
 //**************************************************************************/
-// DESCRIPTION: Appwizard generated plugin
+// DESCRIPTION:
 // AUTHOR: 
 //***************************************************************************/
 
@@ -16,11 +9,8 @@
 #include "WindowsMessageFilter.h"
 #include "notify.h"
 #include "modstack.h"
-#include <vector>
-#include <algorithm>
 
 #define CoronaAutoExposure_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
-
 
 class CoronaAutoExposureClassDesc : public ClassDesc2 
 {
@@ -42,17 +32,14 @@ ClassDesc2* GetCoronaAutoExposureDesc() {
 	return &CoronaAutoExposureDesc; 
 }
 
-//--- CoronaAutoExposure -------------------------------------------------------
 CoronaAutoExposure::CoronaAutoExposure()
 	: hPanel(nullptr)
 	, iu(nullptr)
 {
-
 }
 
 CoronaAutoExposure::~CoronaAutoExposure()
 {
-
 }
 
 void CoronaAutoExposure::BeginEditParams(Interface* ip,IUtil* iu) 
@@ -135,7 +122,7 @@ void CoronaAutoExposure::ApplyModifier()
 	IParamBlock2* coronaModPBlock =((Animatable*)coronaCameraMod)->GetParamBlock(0);
 	assert(coronaModPBlock);
 
-	//add animated parameter in the same range
+	//add animated parameter in the same frame range
 	TimeValue startFrame, endFrame;
 	int duration;
 	int delta = GetTicksPerFrame();
@@ -149,8 +136,15 @@ void CoronaAutoExposure::ApplyModifier()
 		endFrame = toFrame * GetTicksPerFrame();
 		duration = endFrame - startFrame + 1;
 	}
-	brightnessArray.empty();
-	brightnessArray.reserve(duration / GetTicksPerFrame());
+
+	//calculate EV params
+	float targetBrightness = targetBrightnessSpn->GetFVal();
+	MaxSDK::Array<float> evArray(brightnessArray2.length());
+	for(auto i=0; i < brightnessArray2.length(); i++) {
+		float ratio = targetBrightness / brightnessArray2[i];
+		float ev = log(ratio) / log(2);
+		evArray[i] = ev;
+	}
 
 	BOOL enableEV = true;
 
@@ -164,12 +158,11 @@ void CoronaAutoExposure::ApplyModifier()
 
 	SuspendAnimate();
 	AnimateOn();
-	for (int frame = startFrame; frame <= endFrame; frame += delta)
+	int i;
+	for (int frame = startFrame, i=0; frame <= endFrame; frame += delta, i++)
 	{
-		float EV = 1.5f;
-		//controller->SetValue(frame, &EV, 1);
-		coronaModPBlock->SetValue(param_def->ID, frame, EV);
-		//coronaModPBlock->SetValueByName<float>( _T("simpleExposure"), EV, frame);
+		if (i < evArray.length())
+			coronaModPBlock->SetValue(param_def->ID, frame, evArray[i]);
 	}
 	ResumeAnimate();
 
@@ -312,8 +305,8 @@ void CoronaAutoExposure::RenderFrames()
 		endFrame = toFrame * GetTicksPerFrame();
 		duration = endFrame - startFrame + 1;
 	}
-	brightnessArray.empty();
-	brightnessArray.reserve(duration / GetTicksPerFrame());
+	brightnessArray2.removeAll();
+	brightnessArray2.reserve(duration / GetTicksPerFrame());
 
 	Renderer *renderer = ip->GetCurrentRenderer(false);
 	auto pBlock = renderer->GetParamBlock(0);
@@ -337,7 +330,12 @@ void CoronaAutoExposure::RenderFrames()
 	{
 		ip->ProgressUpdate((int)((float)frame/duration * 100.0f));
 		ip->CurRendererRenderFrame(frame, bm);
-		brightnessArray.push_back(CalculateMeanBrightness(bm));
+		
+		WStr str; 
+		str.printf(_T("Lowest Value: %f"), .5f);
+		SetDlgItemText(hPanel, IDC_LOW_BRIGHT, str.ToMCHAR());
+
+		brightnessArray2.append(CalculateMeanBrightness(bm));
 		if (ip->GetCancel()) {
 			int retval = MessageBox(ip->GetMAXHWnd(), _M("Really Cancel?"), _M("Question"), MB_ICONQUESTION | MB_YESNO);
 			if (retval == IDYES)
@@ -409,23 +407,27 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 			instance->fromFrame = instance->fromFrameSpn->GetIVal();
 			instance->toFrame = instance->toFrameSpn->GetIVal();
 			instance->RenderFrames();
-			if (instance->brightnessArray.size() > 0)
+			if (!instance->brightnessArray2.isEmpty())
 			{
-				std::sort(instance->brightnessArray.begin(), instance->brightnessArray.end());
+				float maxVal = 0;
+				for(auto i=0; i<instance->brightnessArray2.length(); i++) {
+					if (instance->brightnessArray2[i] > maxVal)
+						maxVal = instance->brightnessArray2[i];
+				}
+				float minVal = maxVal;
+				for(auto i=0; i<instance->brightnessArray2.length(); i++) {
+					if (instance->brightnessArray2[i] < minVal)
+						minVal = instance->brightnessArray2[i];
+				}
 				WStr str; 
-				str.printf(_T("Lowest Value: %f"), instance->brightnessArray.front());
+				str.printf(_T("Lowest Value: %f"), minVal);
 				SetDlgItemText(hWnd, IDC_LOW_BRIGHT, str.ToMCHAR());
-				str.printf(_T("Highest Value: %f"), instance->brightnessArray.back());
+				str.printf(_T("Highest Value: %f"), maxVal);
 				SetDlgItemText(hWnd, IDC_HI_BRIGHT, str.ToMCHAR());
 			}
 			break;
 		case IDC_APPLYCAMERA:
 			//instance->TestFunc();
-			//check if camera is selected (or take rendered camera)
-			//check if average values are calculated
-			//create modifier
-			//create animated paramater
-			//apply to camera
 			instance->ApplyModifier();
 			break;
 
