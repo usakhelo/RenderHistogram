@@ -47,7 +47,7 @@ public:
 	void RenderFrames();
 	float CalculateMeanBrightness(Bitmap*);
 	Bitmap* GetCoronaBuffer(Renderer*);
-	void EnableRangeCtrls(HWND, bool);
+	void ResetCounters();
 	void UpdateUI(HWND);
 
 private:
@@ -61,6 +61,8 @@ private:
 	int fromFrame, toFrame;
 	int fromCalcFrame, toCalcFrame;
 	float minBrVal, maxBrVal, currBrVal;
+	float targetBrightness;
+	bool useSmooth;
 
 	HWND   hPanel;
 	IUtil* iu;

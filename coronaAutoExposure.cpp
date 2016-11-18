@@ -10,8 +10,8 @@
 #include "notify.h"
 #include "modstack.h"
 #include <maxscript/maxwrapper/bitmaps.h>
-
 #include <maxscript/maxscript.h>
+
 #define CoronaAutoExposure_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
 
 static CoronaAutoExposure theCoronaAutoExposure;
@@ -37,6 +37,8 @@ CoronaAutoExposure::CoronaAutoExposure()
 	, iu(nullptr)
 {
 	isAnimRange = true;
+	targetBrightness = .5f;
+	useSmooth = false;
 	fromFrame = toFrame = 0;
 	fromCalcFrame = toCalcFrame = 0;
 	minBrVal = maxBrVal = currBrVal = 0.0f;
@@ -81,13 +83,12 @@ void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 	theCoronaAutoExposure.toFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
 	theCoronaAutoExposure.toFrameSpn->SetResetValue(0);
 
-	theCoronaAutoExposure.targetBrightnessSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_RATIO));
-	theCoronaAutoExposure.targetBrightnessSpn->SetScale(1.0f);
+	theCoronaAutoExposure.targetBrightnessSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TARGET));
+	theCoronaAutoExposure.targetBrightnessSpn->SetScale(0.01f);
 	theCoronaAutoExposure.targetBrightnessSpn->SetLimits(-1000.0f, 1000.0f);
-	theCoronaAutoExposure.targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_RATIO), EDITTYPE_FLOAT);
+	theCoronaAutoExposure.targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TARGET), EDITTYPE_FLOAT);
 	theCoronaAutoExposure.targetBrightnessSpn->SetResetValue(1.0f);
-	theCoronaAutoExposure.targetBrightnessSpn->SetValue(1.0f, FALSE);
-	CheckDlgButton(hWnd,IDC_R_ACTIVETIME,TRUE);
+	
 	UpdateUI(hWnd);
 }
 
@@ -101,9 +102,6 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 	{
 	case WM_INITDIALOG:
 		theCoronaAutoExposure.Init(hWnd);
-
-		DebugPrint(_M("WM_INITDIALOG %d\r\n"), hWnd);
-
 		break;
 
 	case WM_DESTROY:
@@ -114,23 +112,30 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 		switch (LOWORD(wParam)) {
 
 		case IDC_DORENDER:
-			theCoronaAutoExposure.isAnimRange = IsDlgButtonChecked(hWnd, IDC_R_ACTIVETIME) == BST_CHECKED;
-			theCoronaAutoExposure.fromFrame = theCoronaAutoExposure.fromFrameSpn->GetIVal();
-			theCoronaAutoExposure.toFrame = theCoronaAutoExposure.toFrameSpn->GetIVal();
+			theCoronaAutoExposure.ResetCounters();
+			theCoronaAutoExposure.UpdateUI(hWnd);
 			theCoronaAutoExposure.RenderFrames();
 			break;
 		case IDC_APPLYCAMERA:
-			theCoronaAutoExposure.TestFunc();
-			//theCoronaAutoExposure.ApplyModifier();
+			//theCoronaAutoExposure.TestFunc();
+			theCoronaAutoExposure.ApplyModifier();
 			break;
 
 		case IDC_R_ACTIVETIME:
-			theCoronaAutoExposure.EnableRangeCtrls(hWnd, false);
+			theCoronaAutoExposure.isAnimRange = true;
+			theCoronaAutoExposure.UpdateUI(hWnd);
 			break;
 
 		case IDC_R_RANGE:
-			theCoronaAutoExposure.EnableRangeCtrls(hWnd, true);
+			theCoronaAutoExposure.isAnimRange = false;
+			theCoronaAutoExposure.UpdateUI(hWnd);
 			break;
+
+		case IDC_C_SMOOTH:
+			theCoronaAutoExposure.useSmooth = (bool)IsDlgButtonChecked(hWnd, IDC_C_SMOOTH);
+			theCoronaAutoExposure.UpdateUI(hWnd);
+			break;
+			//useSmooth
 
 		case IDC_CLOSE:
 			EndDialog(hWnd, FALSE);
@@ -143,6 +148,18 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 		}
 		break;
 
+	case CC_SPINNER_CHANGE:
+		switch ( LOWORD(wParam) ) {
+		case IDC_SPIN_FROM:
+			theCoronaAutoExposure.fromFrame = theCoronaAutoExposure.fromFrameSpn->GetIVal();
+			break;
+		case IDC_SPIN_TO:
+			theCoronaAutoExposure.toFrame = theCoronaAutoExposure.toFrameSpn->GetIVal();
+			break;
+		case IDC_SPIN_TARGET:
+			theCoronaAutoExposure.targetBrightness = theCoronaAutoExposure.targetBrightnessSpn->GetFVal();
+		}
+
 	case WM_LBUTTONDOWN:
 	case WM_LBUTTONUP:
 	case WM_MOUSEMOVE:
@@ -153,6 +170,41 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 		return 0;
 	}
 	return 1;
+}
+
+void CoronaAutoExposure::ResetCounters() {
+	fromCalcFrame = toCalcFrame = 0;
+	minBrVal = maxBrVal = currBrVal = 0.0f;
+}
+
+void CoronaAutoExposure::UpdateUI(HWND hWnd) {
+
+	WStr str; 
+	str.printf(_T("Current: %f"), currBrVal);
+	SetDlgItemText(hWnd, IDC_CUR_BRIGHT, str.ToMCHAR());
+	str.printf(_T("Lowest: %f"), minBrVal);
+	SetDlgItemText(hWnd, IDC_LOW_BRIGHT, str.ToMCHAR());
+	str.printf(_T("Highest: %f"), maxBrVal);
+	SetDlgItemText(hWnd, IDC_HI_BRIGHT, str.ToMCHAR());
+
+	str.printf(_T("%d"), fromCalcFrame);
+	SetDlgItemText(hWnd, IDC_FRAME_FROM, str.ToMCHAR());
+	str.printf(_T("%d"), toCalcFrame);
+	SetDlgItemText(hWnd, IDC_FRAME_TO, str.ToMCHAR());
+
+	CheckDlgButton(hWnd,IDC_R_ACTIVETIME, isAnimRange);
+	CheckDlgButton(hWnd,IDC_R_RANGE, !isAnimRange);
+
+	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_FROM), !isAnimRange);
+	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_TO), !isAnimRange);
+	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_FROM), !isAnimRange);
+	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_TO), !isAnimRange);
+
+	CheckDlgButton(hWnd,IDC_C_SMOOTH, useSmooth);
+
+	fromFrameSpn->SetValue(fromFrame, false);
+	toFrameSpn->SetValue(toFrame, false);
+	targetBrightnessSpn->SetValue(targetBrightness, false);
 }
 
 bool CoronaAutoExposure::CheckWindowsMessages(HWND hWnd)
@@ -223,7 +275,6 @@ void CoronaAutoExposure::ApplyModifier()
 	}
 
 	//calculate EV params
-	float targetBrightness = targetBrightnessSpn->GetFVal();
 	MaxSDK::Array<float> evArray(brightnessArray2.length());
 	for(auto i=0; i < brightnessArray2.length(); i++) {
 		float ratio = targetBrightness / brightnessArray2[i];
@@ -298,9 +349,8 @@ void CoronaAutoExposure::TestFunc()
 
 Bitmap* CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
 
-	auto pBlock = renderer->GetParamBlock(0);
-	auto classDesc = pBlock->GetDesc()->cd;
-	FPInterface *intface = classDesc->GetInterfaceAt(1);
+	ClassDesc * classDesc =  ip->GetDllDir().ClassDir().FindClass (RENDERER_CLASS_ID, Class_ID((ulong)1655201228, (ulong)1379677700));
+	FPInterface * intface = classDesc->GetInterfaceAt(1);
 
 	FPValue result, result1, param1, param2, param3;
 	FPStatus fnStatus = FPS_FAIL;
@@ -311,7 +361,10 @@ Bitmap* CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
 	param2.i = false;
 	param3.type = (ParamType2)TYPE_BOOL;
 	param3.i = false;
-	FPParams fnParams(3, param1, param2, param3);
+	FPParams fnParams;
+	fnParams.params.append(param1);
+	fnParams.params.append(param2);
+	fnParams.params.append(param3);
 
 	FunctionID fid = intface->FindFn(_T("getVfbContent"));
 	try {
@@ -320,12 +373,12 @@ Bitmap* CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
 	catch (...) {
 	}
 
-	bool res = ExecuteMAXScriptScript(_T("CoronaRenderer.CoronaFp.getVfbContent 0 false false"), TRUE, &result1);
-
-	if (fnStatus == FPS_OK)
-		return result1.bm->bm;
-	else
+	if (fnStatus == FPS_OK && is_bitmap(result.v)) {
+		MAXBitMap *mbm = (MAXBitMap*)result.v;
+		return mbm->bm;
+	}	else {
 		return nullptr;
+	}
 }
 
 float CoronaAutoExposure::CalculateMeanBrightness(Bitmap *bm)
@@ -363,22 +416,27 @@ void CoronaAutoExposure::RenderFrames()
 {
 	ViewParams vp;
 	INode *cam = ip->GetViewExp(NULL).GetViewCamera();
-	if (!cam)
-	{
+	if (!cam)	{
 		TSTR title = GetString(IDS_CLASS_NAME);
 		TSTR message = GetString(IDS_CAM_ERROR);
 		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
 		return;
 	}
-#pragma message(TODO("check for selected camera object too"))
+	#pragma message(TODO("check for selected camera object too"))
 
 	Renderer* currRenderer = ip->GetCurrentRenderer(false);
 	MSTR rendName;
 	currRenderer->GetClassName(rendName);
-	if (!rendName.StartsWith(_T("corona"), false))
-	{
+	if (!rendName.StartsWith(_T("corona"), false)) {
 		TSTR title = GetString(IDS_CLASS_NAME);
 		TSTR message = GetString(IDS_REND_ERROR);
+		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
+		return;
+	}
+
+	if (fromFrame > toFrame) {
+		TSTR title = GetString(IDS_CLASS_NAME);
+		TSTR message = GetString(IDS_FRAME_ERROR);
 		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
 		return;
 	}
@@ -397,7 +455,6 @@ void CoronaAutoExposure::RenderFrames()
 		bi.SetAspect(1.0f);
 		bm = TheManager->Create(&bi);
 	}
-	//bm->Display(_T("AutoExposure"), BMM_RND);
 
 	TimeValue startFrame, endFrame;
 	int duration;
@@ -412,6 +469,7 @@ void CoronaAutoExposure::RenderFrames()
 		endFrame = toFrame * GetTicksPerFrame();
 		duration = endFrame - startFrame + 1;
 	}
+
 	brightnessArray2.removeAll();
 	brightnessArray2.reserve(duration / GetTicksPerFrame());
 
@@ -433,16 +491,20 @@ void CoronaAutoExposure::RenderFrames()
 	LPVOID arg = nullptr;
 	ip->ProgressStart(_M("Calculating Average Brightness"), TRUE, fn, arg);
 	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL);
+	int progress = 0;
 	for (int frame = startFrame; frame <= endFrame; frame += delta)	{
-		ip->ProgressUpdate((int)((float)frame/duration * 100.0f));
+
+		ip->ProgressUpdate((int)((float)progress/duration * 100.0f));
+		progress += delta;
+
 		ip->CurRendererRenderFrame(frame, bm);
 
 		//get image from corona buffer
-
-		Bitmap *bm = GetCoronaBuffer(renderer);
-		if (bm != nullptr) {
-			currBrVal = CalculateMeanBrightness(bm);
+		Bitmap *bmc = GetCoronaBuffer(renderer);
+		if (bmc != nullptr) {
+			currBrVal = CalculateMeanBrightness(bmc);
 		}
+
 		brightnessArray2.append(currBrVal);
 
 		if (frame == startFrame) {
@@ -479,35 +541,4 @@ void CoronaAutoExposure::RenderFrames()
 	result = pBlock->SetValueByName<BOOL>(_T("dof.use"), dofUse, ip->GetTime());
 
 	bm->DeleteThis();
-}
-
-void CoronaAutoExposure::UpdateUI(HWND hWnd) {
-
-	WStr str; 
-	str.printf(_T("Current: %f"), currBrVal);
-	SetDlgItemText(hWnd, IDC_CUR_BRIGHT, str.ToMCHAR());
-	str.printf(_T("Lowest: %f"), minBrVal);
-	SetDlgItemText(hWnd, IDC_LOW_BRIGHT, str.ToMCHAR());
-	str.printf(_T("Highest: %f"), maxBrVal);
-	SetDlgItemText(hWnd, IDC_HI_BRIGHT, str.ToMCHAR());
-
-	str.printf(_T("%d"), fromCalcFrame);
-	SetDlgItemText(hWnd, IDC_FRAME_FROM, str.ToMCHAR());
-	str.printf(_T("%d"), toCalcFrame);
-	SetDlgItemText(hWnd, IDC_FRAME_TO, str.ToMCHAR());
-
-	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_FROM), !isAnimRange);
-	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_TO), !isAnimRange);
-	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_FROM), !isAnimRange);
-	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_TO), !isAnimRange);
-
-	fromFrameSpn->SetValue(fromFrame, false);
-	toFrameSpn->SetValue(toFrame, false);
-}
-
-void CoronaAutoExposure::EnableRangeCtrls(HWND hWnd, bool state) {
-	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_FROM), state);
-	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_TO), state);
-	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_FROM), state);
-	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_TO), state);
 }

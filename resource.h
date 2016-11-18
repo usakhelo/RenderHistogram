@@ -13,6 +13,8 @@
 #define IDS_SELECTIONCOUNT_ERROR        102
 #define IDS_SELECTIONTYPE_ERROR         103
 #define IDS_SELECTION_ERROR             104
+#define IDS_STRING105                   105
+#define IDS_FRAME_ERROR                 105
 #define IDC_CLOSEBUTTON                 1000
 #define IDC_DOSTUFF                     1000
 #define IDC_CLOSE                       1001
@@ -33,11 +35,13 @@
 #define IDC_EDIT_FROM                   1490
 #define IDC_EDIT_TO                     1491
 #define IDC_EDIT_RATIO                  1492
+#define IDC_EDIT_TARGET                 1492
 #define IDC_SPIN                        1496
 #define IDC_SPIN_FROM                   1496
 #define IDC_SPIN_TO                     1497
 #define IDC_SPIN3                       1498
 #define IDC_SPIN_RATIO                  1498
+#define IDC_SPIN_TARGET                 1498
 
 // Next default values for new objects
 // 
