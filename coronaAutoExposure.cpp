@@ -88,7 +88,7 @@ void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 	theCoronaAutoExposure.targetBrightnessSpn->SetLimits(-1000.0f, 1000.0f);
 	theCoronaAutoExposure.targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TARGET), EDITTYPE_FLOAT);
 	theCoronaAutoExposure.targetBrightnessSpn->SetResetValue(1.0f);
-	
+
 	UpdateUI(hWnd);
 }
 
@@ -282,6 +282,9 @@ void CoronaAutoExposure::ApplyModifier()
 		evArray[i] = ev;
 	}
 
+	if (useSmooth)
+		SmoothCurve(evArray);
+
 	BOOL enableEV = true;
 
 	ParamBlockDesc2* pbdesc = coronaModPBlock->GetDesc();
@@ -298,12 +301,26 @@ void CoronaAutoExposure::ApplyModifier()
 	{
 		if (i < evArray.length())
 			coronaModPBlock->SetValue(param_def->ID, frame, evArray[i]);
+		DebugPrint(_T("EV: %f"), evArray[i]);
 	}
 	ResumeAnimate();
 
 	dobj->AddModifier(coronaCameraMod);
 
 	node->SetObjectRef(dobj);
+}
+
+void CoronaAutoExposure::SmoothCurve(MaxSDK::Array<float>& evArray) {
+	if (evArray.length() > 2) {
+		for (int i=1; i < evArray.length() - 1; i++) {
+			if (i==1)
+				evArray[i] = (evArray[i-1] + evArray[i] + evArray[i+1]) / 3.0f;
+			else if (evArray.length() > 4 && i < evArray.length() - 2)
+				evArray[i] = (evArray[i-2] + evArray[i-1] + evArray[i] + evArray[i+1] + evArray[i+2]) / 5.0f;
+			else if (evArray.length() > 3)
+				evArray[i] = (evArray[i-2] + evArray[i-1] + evArray[i] + evArray[i+1]) / 4.0f;
+		}
+	}
 }
 
 void CoronaAutoExposure::TestFunc()
@@ -422,7 +439,7 @@ void CoronaAutoExposure::RenderFrames()
 		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
 		return;
 	}
-	#pragma message(TODO("check for selected camera object too"))
+#pragma message(TODO("check for selected camera object too"))
 
 	Renderer* currRenderer = ip->GetCurrentRenderer(false);
 	MSTR rendName;

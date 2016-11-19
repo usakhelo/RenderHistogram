@@ -44,6 +44,7 @@ public:
 	bool CheckWindowsMessages(HWND);
 	void TestFunc();
 	void ApplyModifier();
+	void SmoothCurve(MaxSDK::Array<float>&);
 	void RenderFrames();
 	float CalculateMeanBrightness(Bitmap*);
 	Bitmap* GetCoronaBuffer(Renderer*);
