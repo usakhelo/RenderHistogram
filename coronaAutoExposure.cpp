@@ -16,18 +16,18 @@
 
 static CoronaAutoExposure theCoronaAutoExposure;
 
-class CoronaAutoExposureClassDesc : public ClassDesc2 
+class CoronaAutoExposureClassDesc : public ClassDesc2
 {
 public:
-	int IsPublic() 							{ return TRUE; }
-	void* Create(BOOL loading = FALSE) 		{ return &theCoronaAutoExposure; }
-	const TCHAR * ClassName() 				{ return GetString(IDS_CLASS_NAME); }
-	SClass_ID SuperClassID() 				{ return UTILITY_CLASS_ID; }
-	Class_ID ClassID() 						{ return CoronaAutoExposure_CLASS_ID; }
-	const TCHAR* Category() 				{ return GetString(IDS_CATEGORY); }
+	int IsPublic() { return TRUE; }
+	void* Create(BOOL loading = FALSE) { return &theCoronaAutoExposure; }
+	const TCHAR * ClassName() { return GetString(IDS_CLASS_NAME); }
+	SClass_ID SuperClassID() { return UTILITY_CLASS_ID; }
+	Class_ID ClassID() { return CoronaAutoExposure_CLASS_ID; }
+	const TCHAR* Category() { return GetString(IDS_CATEGORY); }
 
-	const TCHAR* InternalName() 			{ return _T("CoronaAutoExposure"); }
-	HINSTANCE HInstance() 					{ return hInstance; }
+	const TCHAR* InternalName() { return _T("CoronaAutoExposure"); }
+	HINSTANCE HInstance() { return hInstance; }
 };
 
 static CoronaAutoExposureClassDesc CoronaAutoExposureDesc;
@@ -48,9 +48,9 @@ CoronaAutoExposure::~CoronaAutoExposure()
 {
 }
 
-ClassDesc2* GetCoronaAutoExposureDesc() {	return &CoronaAutoExposureDesc; }
+ClassDesc2* GetCoronaAutoExposureDesc() { return &CoronaAutoExposureDesc; }
 
-void CoronaAutoExposure::BeginEditParams(Interface* ip,IUtil* iu) 
+void CoronaAutoExposure::BeginEditParams(Interface* ip, IUtil* iu)
 {
 	this->iu = iu;
 	this->ip = ip;
@@ -62,7 +62,7 @@ void CoronaAutoExposure::BeginEditParams(Interface* ip,IUtil* iu)
 		0);
 }
 
-void CoronaAutoExposure::EndEditParams(Interface* ip,IUtil*)
+void CoronaAutoExposure::EndEditParams(Interface* ip, IUtil*)
 {
 	this->iu = nullptr;
 	ip->DeleteRollupPage(hPanel);
@@ -98,7 +98,7 @@ void CoronaAutoExposure::Destroy(HWND /*handle*/)
 
 INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	switch (msg) 
+	switch (msg)
 	{
 	case WM_INITDIALOG:
 		theCoronaAutoExposure.Init(hWnd);
@@ -149,7 +149,7 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 		break;
 
 	case CC_SPINNER_CHANGE:
-		switch ( LOWORD(wParam) ) {
+		switch (LOWORD(wParam)) {
 		case IDC_SPIN_FROM:
 			theCoronaAutoExposure.fromFrame = theCoronaAutoExposure.fromFrameSpn->GetIVal();
 			break;
@@ -163,7 +163,7 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 	case WM_LBUTTONDOWN:
 	case WM_LBUTTONUP:
 	case WM_MOUSEMOVE:
-		GetCOREInterface()->RollupMouseMessage(hWnd,msg,wParam,lParam);
+		GetCOREInterface()->RollupMouseMessage(hWnd, msg, wParam, lParam);
 		break;
 
 	default:
@@ -179,7 +179,7 @@ void CoronaAutoExposure::ResetCounters() {
 
 void CoronaAutoExposure::UpdateUI(HWND hWnd) {
 
-	WStr str; 
+	WStr str;
 	str.printf(_T("Current: %f"), currBrVal);
 	SetDlgItemText(hWnd, IDC_CUR_BRIGHT, str.ToMCHAR());
 	str.printf(_T("Lowest: %f"), minBrVal);
@@ -192,15 +192,15 @@ void CoronaAutoExposure::UpdateUI(HWND hWnd) {
 	str.printf(_T("%d"), toCalcFrame);
 	SetDlgItemText(hWnd, IDC_FRAME_TO, str.ToMCHAR());
 
-	CheckDlgButton(hWnd,IDC_R_ACTIVETIME, isAnimRange);
-	CheckDlgButton(hWnd,IDC_R_RANGE, !isAnimRange);
+	CheckDlgButton(hWnd, IDC_R_ACTIVETIME, isAnimRange);
+	CheckDlgButton(hWnd, IDC_R_RANGE, !isAnimRange);
 
 	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_FROM), !isAnimRange);
 	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_TO), !isAnimRange);
 	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_FROM), !isAnimRange);
 	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_TO), !isAnimRange);
 
-	CheckDlgButton(hWnd,IDC_C_SMOOTH, useSmooth);
+	CheckDlgButton(hWnd, IDC_C_SMOOTH, useSmooth);
 
 	fromFrameSpn->SetValue(fromFrame, false);
 	toFrameSpn->SetValue(toFrame, false);
@@ -256,7 +256,7 @@ void CoronaAutoExposure::ApplyModifier()
 	Modifier *coronaCameraMod = (Modifier *)CreateInstance(
 		OSM_CLASS_ID, Class_ID((ulong)-1551416164, (ulong)502132111));
 
-	IParamBlock2* coronaModPBlock =((Animatable*)coronaCameraMod)->GetParamBlock(0);
+	IParamBlock2* coronaModPBlock = ((Animatable*)coronaCameraMod)->GetParamBlock(0);
 	assert(coronaModPBlock);
 
 	//add animated parameter in the same frame range
@@ -268,7 +268,8 @@ void CoronaAutoExposure::ApplyModifier()
 		startFrame = frames.Start();
 		endFrame = frames.End();
 		duration = (int)frames.Duration();
-	} else {
+	}
+	else {
 		startFrame = fromFrame * GetTicksPerFrame();
 		endFrame = toFrame * GetTicksPerFrame();
 		duration = endFrame - startFrame + 1;
@@ -276,8 +277,9 @@ void CoronaAutoExposure::ApplyModifier()
 
 	//calculate EV params
 	MaxSDK::Array<float> evArray(brightnessArray2.length());
-	for(auto i=0; i < brightnessArray2.length(); i++) {
+	for (auto i = 0; i < brightnessArray2.length(); i++) {
 		float ratio = targetBrightness / brightnessArray2[i];
+		DebugPrint(_T("brighness: %f\r\n"), brightnessArray2[i]);
 		float ev = log(ratio) / log(2);
 		evArray[i] = ev;
 	}
@@ -291,17 +293,19 @@ void CoronaAutoExposure::ApplyModifier()
 	int param_index = pbdesc->NameToIndex(_T("simpleExposure"));
 	const ParamDef* param_def = pbdesc->GetParamDefByIndex(param_index);
 
-	Control *controller = (Control *) CreateInstance(CTRL_FLOAT_CLASS_ID,Class_ID(LININTERP_FLOAT_CLASS_ID,0)); 
+	Control *controller = (Control *)CreateInstance(CTRL_FLOAT_CLASS_ID, Class_ID(LININTERP_FLOAT_CLASS_ID, 0));
 	coronaModPBlock->SetControllerByID(param_def->ID, 0, controller, true);
-	coronaModPBlock->SetValueByName<BOOL>( _T("overrideSimpleExposure"), enableEV, 0);
+	coronaModPBlock->SetValueByName<BOOL>(_T("overrideSimpleExposure"), enableEV, 0);
 
 	SuspendAnimate();
 	AnimateOn();
-	for (int frame = startFrame, i=0; frame <= endFrame; frame += delta, i++)
+	for (int frame = startFrame, i = 0; frame <= endFrame; frame += delta, i++)
 	{
-		if (i < evArray.length())
+		//TODO: if evArray empty dont add modifier
+		if (i < evArray.length()) {
 			coronaModPBlock->SetValue(param_def->ID, frame, evArray[i]);
-		DebugPrint(_T("EV: %f"), evArray[i]);
+			DebugPrint(_T("EV: %f\r\n"), evArray[i]);
+		}
 	}
 	ResumeAnimate();
 
@@ -312,20 +316,20 @@ void CoronaAutoExposure::ApplyModifier()
 
 void CoronaAutoExposure::SmoothCurve(MaxSDK::Array<float>& evArray) {
 	if (evArray.length() > 2) {
-		for (int i=1; i < evArray.length() - 1; i++) {
-			if (i==1)
-				evArray[i] = (evArray[i-1] + evArray[i] + evArray[i+1]) / 3.0f;
+		for (int i = 1; i < evArray.length() - 1; i++) {
+			if (i == 1)
+				evArray[i] = 3.0f / ((1 / evArray[i - 1]) + (1 / evArray[i]) + (1 / evArray[i + 1]));
 			else if (evArray.length() > 4 && i < evArray.length() - 2)
-				evArray[i] = (evArray[i-2] + evArray[i-1] + evArray[i] + evArray[i+1] + evArray[i+2]) / 5.0f;
+				evArray[i] = 5.0f / ((1 / evArray[i - 2]) + (1 / evArray[i - 1]) + (1 / evArray[i]) + (1 / evArray[i + 1]) + (1 / evArray[i + 2]));
 			else if (evArray.length() > 3)
-				evArray[i] = (evArray[i-2] + evArray[i-1] + evArray[i] + evArray[i+1]) / 4.0f;
+				evArray[i] = 4.0f / ((1 / evArray[i - 2]) + (1 / evArray[i - 1]) + (1 / evArray[i]) + (1 / evArray[i + 1]));
 		}
 	}
 }
 
 void CoronaAutoExposure::TestFunc()
 {
-	ClassDesc * classDesc =  ip->GetDllDir().ClassDir().FindClass (RENDERER_CLASS_ID, Class_ID((ulong)1655201228, (ulong)1379677700));
+	ClassDesc * classDesc = ip->GetDllDir().ClassDir().FindClass(RENDERER_CLASS_ID, Class_ID((ulong)1655201228, (ulong)1379677700));
 	FPInterface * intface = classDesc->GetInterfaceAt(1);
 
 	FPValue result, result1, param1, param2, param3;
@@ -345,7 +349,7 @@ void CoronaAutoExposure::TestFunc()
 	FunctionID fid = intface->FindFn(_T("getCoronaVersion"));
 	if (fid) {
 		try {
-			fnStatus = intface->Invoke(fid, result);  
+			fnStatus = intface->Invoke(fid, result);
 		}
 		catch (...) {
 		}
@@ -353,7 +357,7 @@ void CoronaAutoExposure::TestFunc()
 
 	fid = intface->FindFn(_T("getVfbContent"));
 	try {
-		fnStatus = intface->Invoke(fid, result, &fnParams);  
+		fnStatus = intface->Invoke(fid, result, &fnParams);
 	}
 	catch (...) {
 	}
@@ -366,7 +370,7 @@ void CoronaAutoExposure::TestFunc()
 
 Bitmap* CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
 
-	ClassDesc * classDesc =  ip->GetDllDir().ClassDir().FindClass (RENDERER_CLASS_ID, Class_ID((ulong)1655201228, (ulong)1379677700));
+	ClassDesc * classDesc = ip->GetDllDir().ClassDir().FindClass(RENDERER_CLASS_ID, Class_ID((ulong)1655201228, (ulong)1379677700));
 	FPInterface * intface = classDesc->GetInterfaceAt(1);
 
 	FPValue result, result1, param1, param2, param3;
@@ -385,7 +389,7 @@ Bitmap* CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
 
 	FunctionID fid = intface->FindFn(_T("getVfbContent"));
 	try {
-		fnStatus = intface->Invoke(fid, result, &fnParams);  
+		fnStatus = intface->Invoke(fid, result, &fnParams);
 	}
 	catch (...) {
 	}
@@ -393,7 +397,8 @@ Bitmap* CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
 	if (fnStatus == FPS_OK && is_bitmap(result.v)) {
 		MAXBitMap *mbm = (MAXBitMap*)result.v;
 		return mbm->bm;
-	}	else {
+	}
+	else {
 		return nullptr;
 	}
 }
@@ -418,13 +423,16 @@ float CoronaAutoExposure::CalculateMeanBrightness(Bitmap *bm)
 	{
 		for (int j = 0; j < biHeight; j++)
 		{
-			bm->GetPixels(i,j,1,&c1);
+			bm->GetPixels(i, j, 1, &c1);
 			float lum = rY*c1.r + gY*c1.g + bY*c1.b;
-			sumLum += lum;
+			sumLum += 1.0f/lum;
 		}
 	}
 
-	result = sumLum / (biWidth * biHeight);
+	//harmonic mean
+	result = (biWidth * biHeight) / sumLum;
+	//arithmetic mean
+	//result = sumLum / (biWidth * biHeight);
 
 	return result;
 }
@@ -433,7 +441,7 @@ void CoronaAutoExposure::RenderFrames()
 {
 	ViewParams vp;
 	INode *cam = ip->GetViewExp(NULL).GetViewCamera();
-	if (!cam)	{
+	if (!cam) {
 		TSTR title = GetString(IDS_CLASS_NAME);
 		TSTR message = GetString(IDS_CAM_ERROR);
 		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
@@ -481,7 +489,8 @@ void CoronaAutoExposure::RenderFrames()
 		startFrame = frames.Start();
 		endFrame = frames.End();
 		duration = (int)frames.Duration();
-	} else {
+	}
+	else {
 		startFrame = fromFrame * GetTicksPerFrame();
 		endFrame = toFrame * GetTicksPerFrame();
 		duration = endFrame - startFrame + 1;
@@ -509,9 +518,9 @@ void CoronaAutoExposure::RenderFrames()
 	ip->ProgressStart(_M("Calculating Average Brightness"), TRUE, fn, arg);
 	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL);
 	int progress = 0;
-	for (int frame = startFrame; frame <= endFrame; frame += delta)	{
+	for (int frame = startFrame; frame <= endFrame; frame += delta) {
 
-		ip->ProgressUpdate((int)((float)progress/duration * 100.0f));
+		ip->ProgressUpdate((int)((float)progress / duration * 100.0f));
 		progress += delta;
 
 		ip->CurRendererRenderFrame(frame, bm);
@@ -534,8 +543,8 @@ void CoronaAutoExposure::RenderFrames()
 		if (currBrVal < minBrVal)
 			minBrVal = currBrVal;
 
-		fromCalcFrame = (int)((float)startFrame/delta);
-		toCalcFrame = (int)((float)frame/delta);
+		fromCalcFrame = (int)((float)startFrame / delta);
+		toCalcFrame = (int)((float)frame / delta);
 
 		UpdateUI(hPanel);
 
