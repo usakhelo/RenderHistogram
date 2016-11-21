@@ -301,7 +301,7 @@ void CoronaAutoExposure::ApplyModifier()
 	AnimateOn();
 	for (int frame = startFrame, i = 0; frame <= endFrame; frame += delta, i++)
 	{
-		//TODO: if evArray empty dont add modifier
+		//TODO: if evArray is empty dont add modifier
 		if (i < evArray.length()) {
 			coronaModPBlock->SetValue(param_def->ID, frame, evArray[i]);
 			DebugPrint(_T("EV: %f\r\n"), evArray[i]);
@@ -529,6 +529,7 @@ void CoronaAutoExposure::RenderFrames()
 		Bitmap *bmc = GetCoronaBuffer(renderer);
 		if (bmc != nullptr) {
 			currBrVal = CalculateMeanBrightness(bmc);
+			bmc->DeleteThis();
 		}
 
 		brightnessArray2.append(currBrVal);
