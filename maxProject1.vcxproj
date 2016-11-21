@@ -15,7 +15,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectName>maxProject1</ProjectName>
+    <ProjectName>coronaAutoExposure</ProjectName>
     <ProjectGuid>{6671F0BA-6FB8-4f35-8392-0676D05113A8}</ProjectGuid>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <MaxSDK>C:\soft\3ds Max 2016 SDK\maxsdk</MaxSDK>
@@ -28,10 +28,13 @@
   </ImportGroup>
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Platform)'=='x64'">C:\plugins\plugins\</OutDir>
+    <OutDir Condition="'$(Platform)'=='x64'">.\bin\</OutDir>
     <IntDir>$(ProjectDir)\obj\$(MaxPlatform)\$(MaxConfiguration)\</IntDir>
     <TargetName>maxProject1</TargetName>
     <TargetExt>.dlu</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Hybrid|x64'">
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -44,6 +47,7 @@
       <AdditionalLibraryDirectories>$(MaxSdkLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>bmm.lib; core.lib; geom.lib; gfx.lib; mesh.lib; maxutil.lib; maxscrpt.lib; gup.lib; paramblk2.lib;;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>maxProject1.def</ModuleDefinitionFile>
+      <StripPrivateSymbols Condition="'$(Configuration)|$(Platform)'=='Hybrid|x64'">$(TargetFileName).pdb</StripPrivateSymbols>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
