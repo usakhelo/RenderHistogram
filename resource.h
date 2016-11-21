@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by maxProject1.rc
+// Used by coronaAutoExposure.rc
 //
 #define IDS_LIBDESCRIPTION              1
 #define IDS_CATEGORY                    2
@@ -24,6 +24,10 @@
 #define IDC_STATUS                      1007
 #define IDC_HI_BRIGHT                   1007
 #define IDC_LOW_BRIGHT                  1008
+#define IDC_CUR_BRIGHT                  1009
+#define IDC_FRAME_FROM                  1010
+#define IDC_FROM_TO                     1011
+#define IDC_FRAME_TO                    1011
 #define IDC_COLOR                       1456
 #define IDC_EDIT                        1490
 #define IDC_EDIT_FROM                   1490

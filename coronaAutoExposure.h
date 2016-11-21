@@ -41,17 +41,13 @@ public:
 	void Init(HWND hWnd);
 	void Destroy(HWND hWnd);
 
-	static CoronaAutoExposure* GetInstance() { 
-		static CoronaAutoExposure theCoronaAutoExposure;
-		return &theCoronaAutoExposure; 
-	}
-
 	bool CheckWindowsMessages(HWND);
 	void TestFunc();
 	void ApplyModifier();
 	void RenderFrames();
 	float CalculateMeanBrightness(Bitmap*);
 	void EnableRangeCtrls(HWND, bool);
+	void UpdateUI(HWND);
 
 private:
 	static INT_PTR CALLBACK DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -62,6 +58,8 @@ private:
 
 	bool isAnimRange;
 	int fromFrame, toFrame;
+	int fromCalcFrame, toCalcFrame;
+	float minBrVal, maxBrVal, currBrVal;
 
 	HWND   hPanel;
 	IUtil* iu;

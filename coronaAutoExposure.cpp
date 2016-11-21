@@ -12,11 +12,13 @@
 
 #define CoronaAutoExposure_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
 
+static CoronaAutoExposure theCoronaAutoExposure;
+
 class CoronaAutoExposureClassDesc : public ClassDesc2 
 {
 public:
 	int IsPublic() 							{ return TRUE; }
-	void* Create(BOOL loading = FALSE) 		{ return CoronaAutoExposure::GetInstance(); }
+	void* Create(BOOL loading = FALSE) 		{ return &theCoronaAutoExposure; }
 	const TCHAR * ClassName() 				{ return GetString(IDS_CLASS_NAME); }
 	SClass_ID SuperClassID() 				{ return UTILITY_CLASS_ID; }
 	Class_ID ClassID() 						{ return CoronaAutoExposure_CLASS_ID; }
@@ -26,21 +28,23 @@ public:
 	HINSTANCE HInstance() 					{ return hInstance; }
 };
 
-
-ClassDesc2* GetCoronaAutoExposureDesc() { 
-	static CoronaAutoExposureClassDesc CoronaAutoExposureDesc;
-	return &CoronaAutoExposureDesc; 
-}
+static CoronaAutoExposureClassDesc CoronaAutoExposureDesc;
 
 CoronaAutoExposure::CoronaAutoExposure()
 	: hPanel(nullptr)
 	, iu(nullptr)
 {
+	isAnimRange = true;
+	fromFrame = toFrame = 0;
+	fromCalcFrame = toCalcFrame = 0;
+	minBrVal = maxBrVal = currBrVal = 0.0f;
 }
 
 CoronaAutoExposure::~CoronaAutoExposure()
 {
 }
+
+ClassDesc2* GetCoronaAutoExposureDesc() {	return &CoronaAutoExposureDesc; }
 
 void CoronaAutoExposure::BeginEditParams(Interface* ip,IUtil* iu) 
 {
@@ -63,11 +67,90 @@ void CoronaAutoExposure::EndEditParams(Interface* ip,IUtil*)
 
 void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 {
+	theCoronaAutoExposure.fromFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_FROM));
+	theCoronaAutoExposure.fromFrameSpn->SetScale(1.0f);
+	theCoronaAutoExposure.fromFrameSpn->SetLimits(-1000000, 1000000);
+	theCoronaAutoExposure.fromFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_FROM), EDITTYPE_INT);
+	theCoronaAutoExposure.fromFrameSpn->SetResetValue(0);
+
+	theCoronaAutoExposure.toFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TO));
+	theCoronaAutoExposure.toFrameSpn->SetScale(1.0f);
+	theCoronaAutoExposure.toFrameSpn->SetLimits(-1000000, 1000000);
+	theCoronaAutoExposure.toFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
+	theCoronaAutoExposure.toFrameSpn->SetResetValue(0);
+
+	theCoronaAutoExposure.targetBrightnessSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_RATIO));
+	theCoronaAutoExposure.targetBrightnessSpn->SetScale(1.0f);
+	theCoronaAutoExposure.targetBrightnessSpn->SetLimits(-1000.0f, 1000.0f);
+	theCoronaAutoExposure.targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_RATIO), EDITTYPE_FLOAT);
+	theCoronaAutoExposure.targetBrightnessSpn->SetResetValue(1.0f);
+	theCoronaAutoExposure.targetBrightnessSpn->SetValue(1.0f, FALSE);
 	CheckDlgButton(hWnd,IDC_R_ACTIVETIME,TRUE);
+	UpdateUI(hWnd);
 }
 
 void CoronaAutoExposure::Destroy(HWND /*handle*/)
 {
+}
+
+INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	switch (msg) 
+	{
+	case WM_INITDIALOG:
+		theCoronaAutoExposure.Init(hWnd);
+
+		DebugPrint(_M("WM_INITDIALOG %d\r\n"), hWnd);
+
+		break;
+
+	case WM_DESTROY:
+		theCoronaAutoExposure.Destroy(hWnd);
+		break;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+
+		case IDC_DORENDER:
+			theCoronaAutoExposure.isAnimRange = IsDlgButtonChecked(hWnd, IDC_R_ACTIVETIME) == BST_CHECKED;
+			theCoronaAutoExposure.fromFrame = theCoronaAutoExposure.fromFrameSpn->GetIVal();
+			theCoronaAutoExposure.toFrame = theCoronaAutoExposure.toFrameSpn->GetIVal();
+			theCoronaAutoExposure.RenderFrames();
+			break;
+		case IDC_APPLYCAMERA:
+			//theCoronaAutoExposure.TestFunc();
+			theCoronaAutoExposure.ApplyModifier();
+			break;
+
+		case IDC_R_ACTIVETIME:
+			theCoronaAutoExposure.EnableRangeCtrls(hWnd, false);
+			break;
+
+		case IDC_R_RANGE:
+			theCoronaAutoExposure.EnableRangeCtrls(hWnd, true);
+			break;
+
+		case IDC_CLOSE:
+			EndDialog(hWnd, FALSE);
+			ReleaseISpinner(theCoronaAutoExposure.fromFrameSpn);
+			ReleaseISpinner(theCoronaAutoExposure.toFrameSpn);
+			ReleaseISpinner(theCoronaAutoExposure.targetBrightnessSpn);
+			if (theCoronaAutoExposure.iu)
+				theCoronaAutoExposure.iu->CloseUtility();
+			break;
+		}
+		break;
+
+	case WM_LBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case WM_MOUSEMOVE:
+		GetCOREInterface()->RollupMouseMessage(hWnd,msg,wParam,lParam);
+		break;
+
+	default:
+		return 0;
+	}
+	return 1;
 }
 
 bool CoronaAutoExposure::CheckWindowsMessages(HWND hWnd)
@@ -158,7 +241,6 @@ void CoronaAutoExposure::ApplyModifier()
 
 	SuspendAnimate();
 	AnimateOn();
-	int i;
 	for (int frame = startFrame, i=0; frame <= endFrame; frame += delta, i++)
 	{
 		if (i < evArray.length())
@@ -326,16 +408,32 @@ void CoronaAutoExposure::RenderFrames()
 	LPVOID arg = nullptr;
 	ip->ProgressStart(_M("Calculating Average Brightness"), TRUE, fn, arg);
 	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL);
-	for (int frame = startFrame; frame <= endFrame; frame += delta)
-	{
+	for (int frame = startFrame; frame <= endFrame; frame += delta)	{
 		ip->ProgressUpdate((int)((float)frame/duration * 100.0f));
 		ip->CurRendererRenderFrame(frame, bm);
-		
+
 		WStr str; 
 		str.printf(_T("Lowest Value: %f"), .5f);
 		SetDlgItemText(hPanel, IDC_LOW_BRIGHT, str.ToMCHAR());
 
-		brightnessArray2.append(CalculateMeanBrightness(bm));
+		currBrVal = CalculateMeanBrightness(bm);
+		brightnessArray2.append(currBrVal);
+
+		if (frame == startFrame) {
+			maxBrVal = minBrVal = currBrVal;
+		}
+
+		if (currBrVal > maxBrVal)
+			maxBrVal = currBrVal;
+
+		if (currBrVal < minBrVal)
+			minBrVal = currBrVal;
+
+		fromCalcFrame = (int)((float)startFrame/delta);
+		toCalcFrame = (int)((float)frame/delta);
+
+		UpdateUI(hPanel);
+
 		if (ip->GetCancel()) {
 			int retval = MessageBox(ip->GetMAXHWnd(), _M("Really Cancel?"), _M("Question"), MB_ICONQUESTION | MB_YESNO);
 			if (retval == IDYES)
@@ -357,107 +455,33 @@ void CoronaAutoExposure::RenderFrames()
 	bm->DeleteThis();
 }
 
+void CoronaAutoExposure::UpdateUI(HWND hWnd) {
+
+	WStr str; 
+	str.printf(_T("Current: %f"), currBrVal);
+	SetDlgItemText(hWnd, IDC_CUR_BRIGHT, str.ToMCHAR());
+	str.printf(_T("Lowest: %f"), minBrVal);
+	SetDlgItemText(hWnd, IDC_LOW_BRIGHT, str.ToMCHAR());
+	str.printf(_T("Highest: %f"), maxBrVal);
+	SetDlgItemText(hWnd, IDC_HI_BRIGHT, str.ToMCHAR());
+
+	str.printf(_T("%d"), fromCalcFrame);
+	SetDlgItemText(hWnd, IDC_FRAME_FROM, str.ToMCHAR());
+	str.printf(_T("%d"), toCalcFrame);
+	SetDlgItemText(hWnd, IDC_FRAME_TO, str.ToMCHAR());
+
+	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_FROM), !isAnimRange);
+	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_TO), !isAnimRange);
+	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_FROM), !isAnimRange);
+	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_TO), !isAnimRange);
+
+	fromFrameSpn->SetValue(fromFrame, false);
+	toFrameSpn->SetValue(toFrame, false);
+}
+
 void CoronaAutoExposure::EnableRangeCtrls(HWND hWnd, bool state) {
 	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_FROM), state);
 	EnableWindow(GetDlgItem(hWnd, IDC_EDIT_TO), state);
 	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_FROM), state);
 	EnableWindow(GetDlgItem(hWnd, IDC_SPIN_TO), state);
-}
-
-INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-	CoronaAutoExposure* instance = GetInstance();
-
-	switch (msg) 
-	{
-	case WM_INITDIALOG:
-		instance->Init(hWnd);
-		instance->fromFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_FROM));
-		instance->fromFrameSpn->SetScale(1.0f);
-		instance->fromFrameSpn->SetLimits(-1000000, 1000000);
-		instance->fromFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_FROM), EDITTYPE_INT);
-		instance->fromFrameSpn->SetResetValue(0);
-
-		instance->toFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TO));
-		instance->toFrameSpn->SetScale(1.0f);
-		instance->toFrameSpn->SetLimits(-1000000, 1000000);
-		instance->toFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
-		instance->toFrameSpn->SetResetValue(0);
-
-		instance->EnableRangeCtrls(hWnd, false);
-		instance->isAnimRange = true;
-
-		instance->targetBrightnessSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_RATIO));
-		instance->targetBrightnessSpn->SetScale(1.0f);
-		instance->targetBrightnessSpn->SetLimits(-1000.0f, 1000.0f);
-		instance->targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_RATIO), EDITTYPE_FLOAT);
-		instance->targetBrightnessSpn->SetResetValue(1.0f);
-		instance->targetBrightnessSpn->SetValue(1.0f, FALSE);
-		break;
-
-	case WM_DESTROY:
-		instance->Destroy(hWnd);
-		break;
-
-	case WM_COMMAND:
-		switch (LOWORD(wParam)) {
-
-		case IDC_DORENDER:
-			instance->isAnimRange = IsDlgButtonChecked(hWnd, IDC_R_ACTIVETIME) == BST_CHECKED;
-			instance->fromFrame = instance->fromFrameSpn->GetIVal();
-			instance->toFrame = instance->toFrameSpn->GetIVal();
-			instance->RenderFrames();
-			if (!instance->brightnessArray2.isEmpty())
-			{
-				float maxVal = 0;
-				for(auto i=0; i<instance->brightnessArray2.length(); i++) {
-					if (instance->brightnessArray2[i] > maxVal)
-						maxVal = instance->brightnessArray2[i];
-				}
-				float minVal = maxVal;
-				for(auto i=0; i<instance->brightnessArray2.length(); i++) {
-					if (instance->brightnessArray2[i] < minVal)
-						minVal = instance->brightnessArray2[i];
-				}
-				WStr str; 
-				str.printf(_T("Lowest Value: %f"), minVal);
-				SetDlgItemText(hWnd, IDC_LOW_BRIGHT, str.ToMCHAR());
-				str.printf(_T("Highest Value: %f"), maxVal);
-				SetDlgItemText(hWnd, IDC_HI_BRIGHT, str.ToMCHAR());
-			}
-			break;
-		case IDC_APPLYCAMERA:
-			//instance->TestFunc();
-			instance->ApplyModifier();
-			break;
-
-		case IDC_R_ACTIVETIME:
-			instance->EnableRangeCtrls(hWnd, false);
-			break;
-
-		case IDC_R_RANGE:
-			instance->EnableRangeCtrls(hWnd, true);
-			break;
-
-		case IDC_CLOSE:
-			EndDialog(hWnd, FALSE);
-			ReleaseISpinner(instance->fromFrameSpn);
-			ReleaseISpinner(instance->toFrameSpn);
-			ReleaseISpinner(instance->targetBrightnessSpn);
-			if (instance->iu)
-				instance->iu->CloseUtility();
-			break;
-		}
-		break;
-
-	case WM_LBUTTONDOWN:
-	case WM_LBUTTONUP:
-	case WM_MOUSEMOVE:
-		GetCOREInterface()->RollupMouseMessage(hWnd,msg,wParam,lParam);
-		break;
-
-	default:
-		return 0;
-	}
-	return 1;
 }
