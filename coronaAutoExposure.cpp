@@ -9,10 +9,26 @@
 #include "WindowsMessageFilter.h"
 #include "notify.h"
 #include "modstack.h"
+#include "GetCOREInterface.h"
 #include <maxscript/maxwrapper/bitmaps.h>
 #include <maxscript/maxscript.h>
 
 #define CoronaAutoExposure_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
+
+
+class maxRndProgressCB : public RendProgressCallback {
+	public:
+		void	SetTitle		( const TCHAR *title ) {};
+		int		Progress		( int done, int total );
+		bool	abort;
+};
+
+int maxRndProgressCB::Progress( int done, int total ) {
+	if (abort)
+		return (RENDPROG_ABORT);
+	else   
+		return (RENDPROG_CONTINUE);
+}
 
 static CoronaAutoExposure theCoronaAutoExposure;
 
@@ -471,7 +487,7 @@ void CoronaAutoExposure::RenderFrames()
 		BitmapInfo bi;
 		bi.SetWidth(320);
 		bi.SetHeight((int)(320 / aspect));
-		bi.SetType(BMM_FLOAT_RGBA_32);
+		bi.SetType(BMM_TRUE_64); //BMM_FLOAT_RGBA_32 / BMM_TRUE_64
 		bi.SetFlags(MAP_HAS_ALPHA);
 		bi.SetAspect(1.0f);
 		bm = TheManager->Create(&bi);
@@ -510,25 +526,30 @@ void CoronaAutoExposure::RenderFrames()
 	result = pBlock->SetValueByName<BOOL>(_T("mb.useGeometry"), off, ip->GetTime());
 	result = pBlock->SetValueByName<BOOL>(_T("dof.use"), off, ip->GetTime());
 
+	maxRndProgressCB rndCB;
+
 	LPVOID arg = nullptr;
 	ip->ProgressStart(_M("Calculating Average Brightness"), TRUE, fn, arg);
-	int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL);
+	//int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL);
+	//int res = ip->OpenRenderer(renderer, cam, NULL, RENDTYPE_NORMAL);//(cam, NULL, RENDTYPE_NORMAL);
 	int progress = 0;
 	for (int frame = startFrame; frame <= endFrame; frame += delta) {
 
 		ip->ProgressUpdate((int)((float)progress / duration * 100.0f));
 		progress += delta;
 
-		ip->CurRendererRenderFrame(frame, bm);
+		GetCOREInterface8()->QuickRender(frame, bm, &rndCB);
 
-		FPValue fValue = GetCoronaBuffer(renderer);
-		if (is_bitmap(fValue.v)) {
-			MAXBitMap *mbm = (MAXBitMap*)fValue.v;
-			if (mbm->bm != nullptr) {
-				currBrVal = CalculateMeanBrightness(mbm->bm);
-				fValue.Free();
-			}
-		}
+		//ip->RendererRenderFrame(renderer, frame, bm);
+
+		//FPValue fValue = GetCoronaBuffer(renderer);
+		//if (is_bitmap(fValue.v)) {
+		//	MAXBitMap *mbm = (MAXBitMap*)fValue.v;
+		//	if (mbm->bm != nullptr) {
+		//		currBrVal = CalculateMeanBrightness(mbm->bm);
+		//		fValue.Free();
+		//	}
+		//}
 
 		brightnessArray2.append(currBrVal);
 
@@ -558,7 +579,8 @@ void CoronaAutoExposure::RenderFrames()
 		if (!CheckWindowsMessages(ip->GetMAXHWnd()))
 			break;
 	}
-	ip->CloseCurRenderer();
+	renderer->Close(ip->GetMAXHWnd());
+	//ip->CloseRenderer(renderer);
 	ip->ProgressEnd();
 
 	result = pBlock->SetValueByName<BOOL>(_T("mb.useCamera"), mbCam, ip->GetTime());
