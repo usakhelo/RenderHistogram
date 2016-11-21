@@ -47,7 +47,7 @@ public:
 	void SmoothCurve(MaxSDK::Array<float>&);
 	void RenderFrames();
 	float CalculateMeanBrightness(Bitmap*);
-	Bitmap* GetCoronaBuffer(Renderer*);
+	FPValue GetCoronaBuffer(Renderer*);
 	void ResetCounters();
 	void UpdateUI(HWND);
 

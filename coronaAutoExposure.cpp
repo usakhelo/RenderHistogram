@@ -368,12 +368,12 @@ void CoronaAutoExposure::TestFunc()
 	Bitmap* bm2 = mbm->bm;
 }
 
-Bitmap* CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
+FPValue CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
 
 	ClassDesc * classDesc = ip->GetDllDir().ClassDir().FindClass(RENDERER_CLASS_ID, Class_ID((ulong)1655201228, (ulong)1379677700));
 	FPInterface * intface = classDesc->GetInterfaceAt(1);
 
-	FPValue result, result1, param1, param2, param3;
+	FPValue result, param1, param2, param3;
 	FPStatus fnStatus = FPS_FAIL;
 
 	param1.type = (ParamType2)TYPE_INT;
@@ -394,13 +394,9 @@ Bitmap* CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
 	catch (...) {
 	}
 
-	if (fnStatus == FPS_OK && is_bitmap(result.v)) {
-		MAXBitMap *mbm = (MAXBitMap*)result.v;
-		return mbm->bm;
-	}
-	else {
-		return nullptr;
-	}
+	//intface->ReleaseInterface();
+
+	return result;
 }
 
 float CoronaAutoExposure::CalculateMeanBrightness(Bitmap *bm)
@@ -525,11 +521,13 @@ void CoronaAutoExposure::RenderFrames()
 
 		ip->CurRendererRenderFrame(frame, bm);
 
-		//get image from corona buffer
-		Bitmap *bmc = GetCoronaBuffer(renderer);
-		if (bmc != nullptr) {
-			currBrVal = CalculateMeanBrightness(bmc);
-			bmc->DeleteThis();
+		FPValue fValue = GetCoronaBuffer(renderer);
+		if (is_bitmap(fValue.v)) {
+			MAXBitMap *mbm = (MAXBitMap*)fValue.v;
+			if (mbm->bm != nullptr) {
+				currBrVal = CalculateMeanBrightness(mbm->bm);
+				fValue.Free();
+			}
 		}
 
 		brightnessArray2.append(currBrVal);
