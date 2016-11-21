@@ -20,12 +20,53 @@
 #include <iparamb2.h>
 #include <iparamm2.h>
 #include <maxtypes.h>
-//SIMPLE TYPE
+#include <vector>
 
 
 #include <utilapi.h>
 
-
 extern TCHAR *GetString(int id);
-
 extern HINSTANCE hInstance;
+
+class renderHistogram : public UtilityObj 
+{
+public:
+
+	renderHistogram();
+	virtual ~renderHistogram();
+
+	void DeleteThis() { }
+
+	void BeginEditParams(Interface *ip,IUtil *iu);
+	void EndEditParams(Interface *ip,IUtil *iu);
+
+	void Init(HWND hWnd);
+	void Destroy(HWND hWnd);
+
+	static renderHistogram* GetInstance() { 
+		static renderHistogram therenderHistogram;
+		return &therenderHistogram; 
+	}
+
+	bool CheckWindowsMessages(HWND);
+	void TestFunc();
+	void ApplyModifier();
+	void RenderFrames();
+	float CalculateMeanBrightness(Bitmap*);
+	void EnableRangeCtrls(HWND, bool);
+
+private:
+	static INT_PTR CALLBACK DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+	ISpinnerControl*  fromFrameSpn;
+	ISpinnerControl*  toFrameSpn;
+	ISpinnerControl*  targetBrightnessSpn;
+
+	bool isAnimRange;
+	int fromFrame, toFrame;
+
+	HWND   hPanel;
+	IUtil* iu;
+	Interface *ip;
+	std::vector<float> brightnessArray;
+};

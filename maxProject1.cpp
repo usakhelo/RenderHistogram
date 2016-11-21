@@ -22,48 +22,6 @@
 #define renderHistogram_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
 
 
-class renderHistogram : public UtilityObj 
-{
-public:
-
-	//Constructor/Destructor
-	renderHistogram();
-	virtual ~renderHistogram();
-
-	void DeleteThis() { }
-
-	void BeginEditParams(Interface *ip,IUtil *iu);
-	void EndEditParams(Interface *ip,IUtil *iu);
-
-	void Init(HWND hWnd);
-	void Destroy(HWND hWnd);
-
-	// Singleton access
-	static renderHistogram* GetInstance() { 
-		static renderHistogram therenderHistogram;
-		return &therenderHistogram; 
-	}
-
-	bool CheckWindowsMessages(HWND);
-	void TestFunc();
-	void ApplyModifier();
-	void RenderFrames(bool, int, int);
-	float CalculateMeanBrightness(Bitmap*);
-	void EnableRangeCtrls(HWND, bool);
-
-private:
-	static INT_PTR CALLBACK DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-	ISpinnerControl*  fromFrame;
-	ISpinnerControl*  toFrame;
-	ISpinnerControl*  targetBrightness;
-
-	HWND   hPanel;
-	IUtil* iu;
-	Interface *ip;
-	std::vector<float> brightnessArray;
-};
-
 class renderHistogramClassDesc : public ClassDesc2 
 {
 public:
@@ -161,9 +119,6 @@ void renderHistogram::ApplyModifier()
 		return;
 	}
 
-	auto id1 = node->SuperClassID();
-	auto id2 = obj->SuperClassID();
-
 	if (obj->SuperClassID() != CAMERA_CLASS_ID)
 	{
 		TSTR title = GetString(IDS_CLASS_NAME);
@@ -174,18 +129,49 @@ void renderHistogram::ApplyModifier()
 
 	IDerivedObject *dobj = CreateDerivedObject(obj);
 
-	Modifier *coronaCameraMod = (Modifier *)GetCOREInterface()->CreateInstance(
-		OSM_CLASS_ID, Class_ID(-1551416164,502132111));
+	Modifier *coronaCameraMod = (Modifier *)CreateInstance(
+		OSM_CLASS_ID, Class_ID((ulong)-1551416164, (ulong)502132111));
 
-	int count =((Animatable*)coronaCameraMod)->NumParamBlocks();
 	IParamBlock2* coronaModPBlock =((Animatable*)coronaCameraMod)->GetParamBlock(0);
 	assert(coronaModPBlock);
 
-	float EV = 1.5f;
+	//add animated parameter in the same range
+	TimeValue startFrame, endFrame;
+	int duration;
+	int delta = GetTicksPerFrame();
+	if (isAnimRange) {
+		Interval frames = ip->GetAnimRange();
+		startFrame = frames.Start();
+		endFrame = frames.End();
+		duration = (int)frames.Duration();
+	} else {
+		startFrame = fromFrame * GetTicksPerFrame();
+		endFrame = toFrame * GetTicksPerFrame();
+		duration = endFrame - startFrame + 1;
+	}
+	brightnessArray.empty();
+	brightnessArray.reserve(duration / GetTicksPerFrame());
+
 	BOOL enableEV = true;
-	bool result;
-	result = coronaModPBlock->SetValueByName<BOOL>( _T("overrideSimpleExposure"), enableEV, ip->GetTime());
-	result = coronaModPBlock->SetValueByName<float>( _T("simpleExposure"), EV, ip->GetTime());
+
+	ParamBlockDesc2* pbdesc = coronaModPBlock->GetDesc();
+  int param_index = pbdesc->NameToIndex(_T("simpleExposure"));
+  const ParamDef* param_def = pbdesc->GetParamDefByIndex(param_index);
+	
+	Control *controller = (Control *) CreateInstance(CTRL_FLOAT_CLASS_ID,Class_ID(LININTERP_FLOAT_CLASS_ID,0)); 
+	coronaModPBlock->SetControllerByID(param_def->ID, 0, controller, true);
+	coronaModPBlock->SetValueByName<BOOL>( _T("overrideSimpleExposure"), true, 0);
+	
+	SuspendAnimate();
+	AnimateOn();
+	for (int frame = startFrame; frame <= endFrame; frame += delta)
+	{
+		float EV = 1.5f;// * (frame / 10);
+		//controller->SetValue(frame, &EV, 1);
+    coronaModPBlock->SetValue(param_def->ID, frame, EV);
+		//coronaModPBlock->SetValueByName<float>( _T("simpleExposure"), EV, frame);
+	}
+	ResumeAnimate();
 
 	dobj->AddModifier(coronaCameraMod);
 
@@ -253,7 +239,6 @@ float renderHistogram::CalculateMeanBrightness(Bitmap *bm)
 	const double rY = 0.212655;
 	const double gY = 0.715158;
 	const double bY = 0.072187;
-	float maxLum = 0.0;
 	float sumLum = 0.0;
 	float result = 0.0;
 
@@ -277,7 +262,7 @@ float renderHistogram::CalculateMeanBrightness(Bitmap *bm)
 	return result;
 }
 
-void renderHistogram::RenderFrames(bool isAnimRange, int fromFrame=0, int toFrame=0)
+void renderHistogram::RenderFrames()
 {
 	//check that camera view is selected (or just camera object selected?)
 	//open renderer
@@ -371,34 +356,33 @@ void renderHistogram::EnableRangeCtrls(HWND hWnd, bool state) {
 
 INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	bool isAnimRange;
-	int fromFrame, toFrame;
 	renderHistogram* instance = GetInstance();
 
 	switch (msg) 
 	{
 	case WM_INITDIALOG:
 		instance->Init(hWnd);
-		instance->fromFrame = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_FROM));
-		instance->fromFrame->SetScale(1.0f);
-		instance->fromFrame->SetLimits(-1000000, 1000000);
-		instance->fromFrame->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_FROM), EDITTYPE_INT);
-		instance->fromFrame->SetResetValue(0);
+		instance->fromFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_FROM));
+		instance->fromFrameSpn->SetScale(1.0f);
+		instance->fromFrameSpn->SetLimits(-1000000, 1000000);
+		instance->fromFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_FROM), EDITTYPE_INT);
+		instance->fromFrameSpn->SetResetValue(0);
 
-		instance->toFrame = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TO));
-		instance->toFrame->SetScale(1.0f);
-		instance->toFrame->SetLimits(-1000000, 1000000);
-		instance->toFrame->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
-		instance->toFrame->SetResetValue(0);
+		instance->toFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TO));
+		instance->toFrameSpn->SetScale(1.0f);
+		instance->toFrameSpn->SetLimits(-1000000, 1000000);
+		instance->toFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
+		instance->toFrameSpn->SetResetValue(0);
 
 		instance->EnableRangeCtrls(hWnd, false);
+		instance->isAnimRange = true;
 
-		instance->targetBrightness = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_RATIO));
-		instance->targetBrightness->SetScale(1.0f);
-		instance->targetBrightness->SetLimits(-1000.0f, 1000.0f);
-		instance->targetBrightness->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_RATIO), EDITTYPE_FLOAT);
-		instance->targetBrightness->SetResetValue(1.0f);
-		instance->targetBrightness->SetValue(1.0f, FALSE);
+		instance->targetBrightnessSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_RATIO));
+		instance->targetBrightnessSpn->SetScale(1.0f);
+		instance->targetBrightnessSpn->SetLimits(-1000.0f, 1000.0f);
+		instance->targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_RATIO), EDITTYPE_FLOAT);
+		instance->targetBrightnessSpn->SetResetValue(1.0f);
+		instance->targetBrightnessSpn->SetValue(1.0f, FALSE);
 		break;
 
 	case WM_DESTROY:
@@ -409,10 +393,10 @@ INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 		switch (LOWORD(wParam)) {
 
 		case IDC_DORENDER:
-			isAnimRange = IsDlgButtonChecked(hWnd, IDC_R_ACTIVETIME) == BST_CHECKED;
-			fromFrame = instance->fromFrame->GetIVal();
-			toFrame = instance->toFrame->GetIVal();
-			instance->RenderFrames(isAnimRange, fromFrame, toFrame);
+			instance->isAnimRange = IsDlgButtonChecked(hWnd, IDC_R_ACTIVETIME) == BST_CHECKED;
+			instance->fromFrame = instance->fromFrameSpn->GetIVal();
+			instance->toFrame = instance->toFrameSpn->GetIVal();
+			instance->RenderFrames();
 			if (instance->brightnessArray.size() > 0)
 			{
 				std::sort(instance->brightnessArray.begin(), instance->brightnessArray.end());
@@ -443,9 +427,9 @@ INT_PTR CALLBACK renderHistogram::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 
 		case IDC_CLOSE:
 			EndDialog(hWnd, FALSE);
-			ReleaseISpinner(instance->fromFrame);
-			ReleaseISpinner(instance->toFrame);
-			ReleaseISpinner(instance->targetBrightness);
+			ReleaseISpinner(instance->fromFrameSpn);
+			ReleaseISpinner(instance->toFrameSpn);
+			ReleaseISpinner(instance->targetBrightnessSpn);
 			if (instance->iu)
 				instance->iu->CloseUtility();
 			break;
