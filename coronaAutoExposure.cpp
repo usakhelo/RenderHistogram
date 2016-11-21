@@ -9,7 +9,9 @@
 #include "WindowsMessageFilter.h"
 #include "notify.h"
 #include "modstack.h"
+#include <maxscript/maxwrapper/bitmaps.h>
 
+#include <maxscript/maxscript.h>
 #define CoronaAutoExposure_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
 
 static CoronaAutoExposure theCoronaAutoExposure;
@@ -118,8 +120,8 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 			theCoronaAutoExposure.RenderFrames();
 			break;
 		case IDC_APPLYCAMERA:
-			//theCoronaAutoExposure.TestFunc();
-			theCoronaAutoExposure.ApplyModifier();
+			theCoronaAutoExposure.TestFunc();
+			//theCoronaAutoExposure.ApplyModifier();
 			break;
 
 		case IDC_R_ACTIVETIME:
@@ -255,52 +257,75 @@ void CoronaAutoExposure::ApplyModifier()
 
 void CoronaAutoExposure::TestFunc()
 {
-	Renderer *renderer = ip->GetCurrentRenderer(false);
-	int numBlks = renderer->NumParamBlocks();
-	DebugPrint(_M("renderer->NumParamBlocks %d\r\n"), numBlks);
-	for (int i=0; i < numBlks; i++) {
-		auto pBlock = renderer->GetParamBlock(i);
-		DebugPrint(_M("paramBlock Name %s\r\n"), pBlock->GetLocalName());
-		int numParams = pBlock->NumParams();
-		DebugPrint(_M("var->NumParams() %d\r\n"), numParams);
-		Interval inf; // = ip->GetAnimRange();
-		inf.SetInfinite();
-		auto pDesc = pBlock->GetDesc();
-		DebugPrint(_M("pDesc %s\r\n"), pDesc->int_name);
-		int descCount = pDesc->Count();
-		DebugPrint(_M("descCount %d\r\n"), descCount);
-		for(int j=0; j<descCount; j++) {
-			auto pId = pBlock->IndextoID(j);
-			auto& pDef1 = pBlock->GetParamDef(pId);
-			DebugPrint(_M("pDef name %s\r\n"), pDef1.int_name);
-			DebugPrint(_M("pDef type %d\r\n"), pDef1.type);
-			switch (pDef1.type) {
-			case TYPE_FLOAT: 
-				DebugPrint(_M("pDef value %f\r\n"), pBlock->GetFloat(pId, ip->GetTime(), inf));
-				break;
-			case TYPE_BOOL:
-			case TYPE_INT:
-				DebugPrint(_M("pDef value %d\r\n"), pBlock->GetInt(pId, ip->GetTime(), inf));
-				break;
-			case TYPE_STRING:
-				DebugPrint(_M("pDef value %s\r\n"), pBlock->GetStr(pId, ip->GetTime(), inf));
-				break;
-			}
+	ClassDesc * classDesc =  ip->GetDllDir().ClassDir().FindClass (RENDERER_CLASS_ID, Class_ID((ulong)1655201228, (ulong)1379677700));
+	FPInterface * intface = classDesc->GetInterfaceAt(1);
+
+	FPValue result, result1, param1, param2, param3;
+	FPStatus fnStatus = FPS_FAIL;
+
+	param1.type = (ParamType2)TYPE_INT;
+	param1.i = 0;
+	param2.type = (ParamType2)TYPE_BOOL;
+	param2.i = false;
+	param3.type = (ParamType2)TYPE_BOOL;
+	param3.i = false;
+	FPParams fnParams;
+	fnParams.params.append(param1);
+	fnParams.params.append(param2);
+	fnParams.params.append(param3);
+
+	FunctionID fid = intface->FindFn(_T("getCoronaVersion"));
+	if (fid) {
+		try {
+			fnStatus = intface->Invoke(fid, result);  
 		}
-		auto classDesc = pBlock->GetDesc()->cd;
-		int numInt = classDesc->NumInterfaces();
-		DebugPrint(_M("classDesc->NumInterfaces() %d\r\n"), numInt);
-		for(int j=0; j<numInt; j++) {
-			auto intface = classDesc->GetInterfaceAt(j);
-			auto fpdesc = intface->GetDesc();
-			DebugPrint(_M("fpInterface %s\r\n"), fpdesc->internal_name);
-			DebugPrint(_M("numFunctions %d\r\n"), fpdesc->functions.Count());
-			for(int k=0; k<fpdesc->functions.Count(); k++) {
-				auto fnc = fpdesc->functions[k];
-				DebugPrint(_M("function %s\r\n"), fnc->internal_name);
-			}
+		catch (...) {
 		}
 	}
+
+	fid = intface->FindFn(_T("getVfbContent"));
+	try {
+		fnStatus = intface->Invoke(fid, result, &fnParams);  
+	}
+	catch (...) {
+	}
+
+	bool testres = is_bitmap(result.v);
+	MAXBitMap *mbm = (MAXBitMap*)result.v;
+	BitmapInfo* bi2 = &mbm->bi;
+	Bitmap* bm2 = mbm->bm;
+}
+
+Bitmap* CoronaAutoExposure::GetCoronaBuffer(Renderer *renderer) {
+
+	auto pBlock = renderer->GetParamBlock(0);
+	auto classDesc = pBlock->GetDesc()->cd;
+	FPInterface *intface = classDesc->GetInterfaceAt(1);
+
+	FPValue result, result1, param1, param2, param3;
+	FPStatus fnStatus = FPS_FAIL;
+
+	param1.type = (ParamType2)TYPE_INT;
+	param1.i = 0;
+	param2.type = (ParamType2)TYPE_BOOL;
+	param2.i = false;
+	param3.type = (ParamType2)TYPE_BOOL;
+	param3.i = false;
+	FPParams fnParams(3, param1, param2, param3);
+
+	FunctionID fid = intface->FindFn(_T("getVfbContent"));
+	try {
+		fnStatus = intface->Invoke(fid, result, &fnParams);  
+	}
+	catch (...) {
+	}
+
+	bool res = ExecuteMAXScriptScript(_T("CoronaRenderer.CoronaFp.getVfbContent 0 false false"), TRUE, &result1);
+
+	if (fnStatus == FPS_OK)
+		return result1.bm->bm;
+	else
+		return nullptr;
 }
 
 float CoronaAutoExposure::CalculateMeanBrightness(Bitmap *bm)
@@ -412,11 +437,12 @@ void CoronaAutoExposure::RenderFrames()
 		ip->ProgressUpdate((int)((float)frame/duration * 100.0f));
 		ip->CurRendererRenderFrame(frame, bm);
 
-		WStr str; 
-		str.printf(_T("Lowest Value: %f"), .5f);
-		SetDlgItemText(hPanel, IDC_LOW_BRIGHT, str.ToMCHAR());
+		//get image from corona buffer
 
-		currBrVal = CalculateMeanBrightness(bm);
+		Bitmap *bm = GetCoronaBuffer(renderer);
+		if (bm != nullptr) {
+			currBrVal = CalculateMeanBrightness(bm);
+		}
 		brightnessArray2.append(currBrVal);
 
 		if (frame == startFrame) {

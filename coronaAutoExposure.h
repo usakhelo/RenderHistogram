@@ -46,6 +46,7 @@ public:
 	void ApplyModifier();
 	void RenderFrames();
 	float CalculateMeanBrightness(Bitmap*);
+	Bitmap* GetCoronaBuffer(Renderer*);
 	void EnableRangeCtrls(HWND, bool);
 	void UpdateUI(HWND);
 
