@@ -16,10 +16,11 @@
 #define CoronaAutoExposure_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
 
 
-class maxRndProgressCB : public RendProgressCallback {
+class maxRndProgressCB : public RendProgressCallback2 {
 	public:
-		void	SetTitle		( const TCHAR *title ) {};
-		int		Progress		( int done, int total );
+		void	SetTitle ( const MCHAR *title ) {};
+		int		Progress ( int done, int total );
+    void  SetStep (int current, int total) {};
 		bool	abort;
 };
 
@@ -333,12 +334,30 @@ void CoronaAutoExposure::ApplyModifier()
 void CoronaAutoExposure::SmoothCurve(MaxSDK::Array<float>& evArray) {
 	if (evArray.length() > 2) {
 		for (int i = 1; i < evArray.length() - 1; i++) {
-			if (i == 1)
-				evArray[i] = 3.0f / ((1 / evArray[i - 1]) + (1 / evArray[i]) + (1 / evArray[i + 1]));
-			else if (evArray.length() > 4 && i < evArray.length() - 2)
-				evArray[i] = 5.0f / ((1 / evArray[i - 2]) + (1 / evArray[i - 1]) + (1 / evArray[i]) + (1 / evArray[i + 1]) + (1 / evArray[i + 2]));
-			else if (evArray.length() > 3)
-				evArray[i] = 4.0f / ((1 / evArray[i - 2]) + (1 / evArray[i - 1]) + (1 / evArray[i]) + (1 / evArray[i + 1]));
+
+      //geometric mean
+      //if (i == 1)
+      //  evArray[i] = pow(((evArray[i - 1]) * (evArray[i]) * (evArray[i + 1])), 1/3.0f);
+      //else if (evArray.length() > 4 && i < evArray.length() - 2)
+      //  evArray[i] = pow(((evArray[i - 2]) * (evArray[i - 1]) * (evArray[i]) * (evArray[i + 1]) * (evArray[i + 2])), 1/5.0f);
+      //else if (evArray.length() > 3)
+      //  evArray[i] = pow(((evArray[i - 2]) * (evArray[i - 1]) * (evArray[i]) * (evArray[i + 1])), 1/4.0f);
+
+      //arithmetic mean
+      if (i == 1)
+        evArray[i] = ((evArray[i - 1]) + (evArray[i]) + (evArray[i + 1])) / 3.0f;
+      else if (evArray.length() > 4 && i < evArray.length() - 2)
+        evArray[i] = ((evArray[i - 2]) + (evArray[i - 1]) + (evArray[i]) + (evArray[i + 1]) + (evArray[i + 2])) / 5.0f;
+      else if (evArray.length() > 3)
+        evArray[i] = ((evArray[i - 2]) + (evArray[i - 1]) + (evArray[i]) + (evArray[i + 1])) / 4.0f;
+
+			//harmonic mean (doesn't work because of negative-positive values
+   //   if (i == 1)
+			//	evArray[i] = 3.0f / ((1 / evArray[i - 1]) + (1 / evArray[i]) + (1 / evArray[i + 1]));
+			//else if (evArray.length() > 4 && i < evArray.length() - 2)
+			//	evArray[i] = 5.0f / ((1 / evArray[i - 2]) + (1 / evArray[i - 1]) + (1 / evArray[i]) + (1 / evArray[i + 1]) + (1 / evArray[i + 2]));
+			//else if (evArray.length() > 3)
+			//	evArray[i] = 4.0f / ((1 / evArray[i - 2]) + (1 / evArray[i - 1]) + (1 / evArray[i]) + (1 / evArray[i + 1]));
 		}
 	}
 }
@@ -423,12 +442,13 @@ float CoronaAutoExposure::CalculateMeanBrightness(Bitmap *bm)
 	const double rY = 0.212655;
 	const double gY = 0.715158;
 	const double bY = 0.072187;
-	float sumLum = 0.0;
+  float sumLum = 0.0;
+  float sumLum2 = 0.0;
 	float result = 0.0;
 
 	int biWidth = bm->Width();
 	int biHeight = bm->Height();
-
+  int numOfPx = (biWidth * biHeight);
 	BMM_Color_fl c1;
 
 	for (int i = 0; i < biWidth; i++)
@@ -437,12 +457,19 @@ float CoronaAutoExposure::CalculateMeanBrightness(Bitmap *bm)
 		{
 			bm->GetPixels(i, j, 1, &c1);
 			float lum = rY*c1.r + gY*c1.g + bY*c1.b;
-			sumLum += 1.0f/lum;
+      if (lum > 0.0f)
+        sumLum += 1.0f / lum;
+      else
+        sumLum += 0.0f;
+
+      sumLum2 += lum;
 		}
 	}
 
 	//harmonic mean
-	result = (biWidth * biHeight) / sumLum;
+	result = numOfPx / sumLum;
+  DebugPrint(_M("harmonic: %f\r\n"), result);
+  DebugPrint(_M("arithmetic: %f\r\n"), sumLum2 / numOfPx);
 	//arithmetic mean
 	//result = sumLum / (biWidth * biHeight);
 
@@ -487,7 +514,7 @@ void CoronaAutoExposure::RenderFrames()
 		BitmapInfo bi;
 		bi.SetWidth(320);
 		bi.SetHeight((int)(320 / aspect));
-		bi.SetType(BMM_TRUE_64); //BMM_FLOAT_RGBA_32 / BMM_TRUE_64
+		bi.SetType(BMM_FLOAT_RGBA_32); //BMM_FLOAT_RGBA_32 / BMM_TRUE_64
 		bi.SetFlags(MAP_HAS_ALPHA);
 		bi.SetAspect(1.0f);
 		bm = TheManager->Create(&bi);
@@ -527,29 +554,26 @@ void CoronaAutoExposure::RenderFrames()
 	result = pBlock->SetValueByName<BOOL>(_T("dof.use"), off, ip->GetTime());
 
 	maxRndProgressCB rndCB;
+  rndCB.abort = false;
 
 	LPVOID arg = nullptr;
 	ip->ProgressStart(_M("Calculating Average Brightness"), TRUE, fn, arg);
-	//int res = ip->OpenCurRenderer(cam, NULL, RENDTYPE_NORMAL);
-	//int res = ip->OpenRenderer(renderer, cam, NULL, RENDTYPE_NORMAL);//(cam, NULL, RENDTYPE_NORMAL);
 	int progress = 0;
 	for (int frame = startFrame; frame <= endFrame; frame += delta) {
 
 		ip->ProgressUpdate((int)((float)progress / duration * 100.0f));
 		progress += delta;
 
-		GetCOREInterface8()->QuickRender(frame, bm, &rndCB);
+    GetCOREInterface8()->QuickRender(frame, bm);//, &rndCB);
 
-		//ip->RendererRenderFrame(renderer, frame, bm);
-
-		//FPValue fValue = GetCoronaBuffer(renderer);
-		//if (is_bitmap(fValue.v)) {
-		//	MAXBitMap *mbm = (MAXBitMap*)fValue.v;
-		//	if (mbm->bm != nullptr) {
-		//		currBrVal = CalculateMeanBrightness(mbm->bm);
-		//		fValue.Free();
-		//	}
-		//}
+		FPValue fValue = GetCoronaBuffer(renderer);
+		if (is_bitmap(fValue.v)) {
+			MAXBitMap *mbm = (MAXBitMap*)fValue.v;
+			if (mbm->bm != nullptr) {
+				currBrVal = CalculateMeanBrightness(mbm->bm);
+				fValue.Free();
+			}
+		}
 
 		brightnessArray2.append(currBrVal);
 
@@ -569,6 +593,7 @@ void CoronaAutoExposure::RenderFrames()
 		UpdateUI(hPanel);
 
 		if (ip->GetCancel()) {
+      rndCB.abort = ip->GetCancel();
 			int retval = MessageBox(ip->GetMAXHWnd(), _M("Really Cancel?"), _M("Question"), MB_ICONQUESTION | MB_YESNO);
 			if (retval == IDYES)
 				break;
@@ -579,8 +604,6 @@ void CoronaAutoExposure::RenderFrames()
 		if (!CheckWindowsMessages(ip->GetMAXHWnd()))
 			break;
 	}
-	renderer->Close(ip->GetMAXHWnd());
-	//ip->CloseRenderer(renderer);
 	ip->ProgressEnd();
 
 	result = pBlock->SetValueByName<BOOL>(_T("mb.useCamera"), mbCam, ip->GetTime());
