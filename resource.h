@@ -15,6 +15,7 @@
 #define IDS_SELECTION_ERROR             104
 #define IDS_STRING105                   105
 #define IDS_FRAME_ERROR                 105
+#define IDS_EMPTY_ARRAY_ERR             106
 #define IDC_CLOSEBUTTON                 1000
 #define IDC_DOSTUFF                     1000
 #define IDC_CLOSE                       1001

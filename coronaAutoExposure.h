@@ -68,5 +68,5 @@ private:
 	HWND   hPanel;
 	IUtil* iu;
 	Interface *ip;
-	MaxSDK::Array<float> brightnessArray2;
+	MaxSDK::Array<float> brightArray;
 };
