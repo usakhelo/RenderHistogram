@@ -37,7 +37,7 @@
 #define IDC_EDIT_TO                     1491
 #define IDC_EDIT_RATIO                  1492
 #define IDC_EDIT_TARGET                 1492
-#define IDC_EDIT_TO2                    1493
+#define IDC_EDIT_PASS                   1493
 #define IDC_SPIN                        1496
 #define IDC_SPIN_FROM                   1496
 #define IDC_SPIN_TO                     1497
@@ -45,6 +45,7 @@
 #define IDC_SPIN_RATIO                  1498
 #define IDC_SPIN_TARGET                 1498
 #define IDC_SPIN_TO2                    1499
+#define IDC_SPIN_PASS                   1499
 
 // Next default values for new objects
 // 

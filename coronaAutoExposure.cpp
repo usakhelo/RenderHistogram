@@ -1,6 +1,5 @@
 //**************************************************************************/
 //
-//**************************************************************************/
 // DESCRIPTION:
 // AUTHOR: 
 //***************************************************************************/
@@ -13,41 +12,12 @@
 #include <maxscript/maxwrapper/bitmaps.h>
 #include <maxscript/maxscript.h>
 
-#define CoronaAutoExposure_CLASS_ID	Class_ID(0x7354e284, 0x6556a2a9)
-
-
-class maxRndProgressCB : public RendProgressCallback2 {
-	public:
-		void	SetTitle ( const MCHAR *title ) {};
-		int		Progress ( int done, int total );
-    void  SetStep (int current, int total) {};
-		bool	abort;
-};
-
 int maxRndProgressCB::Progress( int done, int total ) {
 	if (abort)
 		return (RENDPROG_ABORT);
 	else   
 		return (RENDPROG_CONTINUE);
 }
-
-static CoronaAutoExposure theCoronaAutoExposure;
-
-class CoronaAutoExposureClassDesc : public ClassDesc2
-{
-public:
-	int IsPublic() { return TRUE; }
-	void* Create(BOOL loading = FALSE) { return &theCoronaAutoExposure; }
-	const TCHAR * ClassName() { return GetString(IDS_CLASS_NAME); }
-	SClass_ID SuperClassID() { return UTILITY_CLASS_ID; }
-	Class_ID ClassID() { return CoronaAutoExposure_CLASS_ID; }
-	const TCHAR* Category() { return GetString(IDS_CATEGORY); }
-
-	const TCHAR* InternalName() { return _T("CoronaAutoExposure"); }
-	HINSTANCE HInstance() { return hInstance; }
-};
-
-static CoronaAutoExposureClassDesc CoronaAutoExposureDesc;
 
 CoronaAutoExposure::CoronaAutoExposure()
 	: hPanel(nullptr)
@@ -59,6 +29,7 @@ CoronaAutoExposure::CoronaAutoExposure()
 	fromFrame = toFrame = 0;
 	fromCalcFrame = toCalcFrame = 0;
 	minBrVal = maxBrVal = currBrVal = 0.0f;
+	passLimit = 50;
 }
 
 CoronaAutoExposure::~CoronaAutoExposure()
@@ -105,6 +76,12 @@ void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 	theCoronaAutoExposure.targetBrightnessSpn->SetLimits(-1000.0f, 1000.0f);
 	theCoronaAutoExposure.targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TARGET), EDITTYPE_FLOAT);
 	theCoronaAutoExposure.targetBrightnessSpn->SetResetValue(1.0f);
+
+	theCoronaAutoExposure.passLimitSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_PASS));
+	theCoronaAutoExposure.passLimitSpn->SetScale(1);
+	theCoronaAutoExposure.passLimitSpn->SetLimits(0, 100000);
+	theCoronaAutoExposure.passLimitSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_PASS), EDITTYPE_INT);
+	theCoronaAutoExposure.passLimitSpn->SetResetValue(1);
 
 	UpdateUI(hWnd);
 }
@@ -156,6 +133,7 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 
 		case IDC_CLOSE:
 			EndDialog(hWnd, FALSE);
+			ReleaseISpinner(theCoronaAutoExposure.passLimitSpn);
 			ReleaseISpinner(theCoronaAutoExposure.fromFrameSpn);
 			ReleaseISpinner(theCoronaAutoExposure.toFrameSpn);
 			ReleaseISpinner(theCoronaAutoExposure.targetBrightnessSpn);
@@ -175,6 +153,10 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 			break;
 		case IDC_SPIN_TARGET:
 			theCoronaAutoExposure.targetBrightness = theCoronaAutoExposure.targetBrightnessSpn->GetFVal();
+			break;
+		case IDC_SPIN_PASS:
+			theCoronaAutoExposure.passLimit = theCoronaAutoExposure.passLimitSpn->GetIVal();
+			break;
 		}
 
 	case WM_LBUTTONDOWN:
@@ -219,6 +201,7 @@ void CoronaAutoExposure::UpdateUI(HWND hWnd) {
 
 	CheckDlgButton(hWnd, IDC_C_SMOOTH, useSmooth);
 
+	passLimitSpn->SetValue(passLimit, false);
 	fromFrameSpn->SetValue(fromFrame, false);
 	toFrameSpn->SetValue(toFrame, false);
 	targetBrightnessSpn->SetValue(targetBrightness, false);
@@ -543,17 +526,21 @@ void CoronaAutoExposure::RenderFrames()
 	Renderer *renderer = ip->GetCurrentRenderer(false);
 	auto pBlock = renderer->GetParamBlock(0);
 	BOOL mbCam, mbGeo, dofUse;
+	int passes;
 	bool result;
 	Interval inf;
 	inf.SetInfinite();
 	result = pBlock->GetValueByName<BOOL>(_T("mb.useCamera"), ip->GetTime(), mbCam, inf);
 	result = pBlock->GetValueByName<BOOL>(_T("mb.useGeometry"), ip->GetTime(), mbGeo, inf);
 	result = pBlock->GetValueByName<BOOL>(_T("dof.use"), ip->GetTime(), dofUse, inf);
-
+	result = pBlock->GetValueByName<int>(_T("progressive.passLimit"), ip->GetTime(), passes, inf);
+	
 	BOOL off = false;
+	int passL = passLimit;
 	result = pBlock->SetValueByName<BOOL>(_T("mb.useCamera"), off, ip->GetTime());
 	result = pBlock->SetValueByName<BOOL>(_T("mb.useGeometry"), off, ip->GetTime());
 	result = pBlock->SetValueByName<BOOL>(_T("dof.use"), off, ip->GetTime());
+	result = pBlock->SetValueByName<int>(_T("progressive.passLimit"), passL, ip->GetTime());
 
 	maxRndProgressCB rndCB;
   rndCB.abort = false;
