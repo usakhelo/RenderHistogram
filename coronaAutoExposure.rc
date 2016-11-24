@@ -111,6 +111,17 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// 32766
+//
+
+IDD_PANEL 32766
+BEGIN
+    0x0000
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // String Table
 //
 
@@ -132,6 +143,7 @@ BEGIN
     IDS_SELECTION_ERROR     "Camera is not selected"
     IDS_FRAME_ERROR         "Incorrect frame numbers"
     IDS_EMPTY_ARRAY_ERR     "Not Enough Brightness Values Calculated"
+    IDS_RENDER_OVERWRITE    "This will overwrite brightnes values\r\nDo you want to continue?"
 END
 
 #endif    // English (United States) resources

@@ -16,6 +16,7 @@
 #define IDS_STRING105                   105
 #define IDS_FRAME_ERROR                 105
 #define IDS_EMPTY_ARRAY_ERR             106
+#define IDS_RENDER_OVERWRITE            107
 #define IDC_CLOSEBUTTON                 1000
 #define IDC_DOSTUFF                     1000
 #define IDC_CLOSE                       1001
@@ -44,14 +45,13 @@
 #define IDC_SPIN3                       1498
 #define IDC_SPIN_RATIO                  1498
 #define IDC_SPIN_TARGET                 1498
-#define IDC_SPIN_TO2                    1499
 #define IDC_SPIN_PASS                   1499
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        103
+#define _APS_NEXT_RESOURCE_VALUE        104
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1008
 #define _APS_NEXT_SYMED_VALUE           101
