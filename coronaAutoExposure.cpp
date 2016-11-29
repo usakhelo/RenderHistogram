@@ -27,6 +27,7 @@ CoronaAutoExposure::CoronaAutoExposure()
 	targetBrightness = .5f;
 	useSmooth = false;
 	fromFrame = toFrame = 0;
+	everyNth = 1;
 	fromCalcFrame = toCalcFrame = 0;
 	minBrVal = maxBrVal = currBrVal = 0.0f;
 	passLimit = 50;
@@ -76,6 +77,12 @@ void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 	theCoronaAutoExposure.targetBrightnessSpn->SetLimits(-1000.0f, 1000.0f);
 	theCoronaAutoExposure.targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TARGET), EDITTYPE_FLOAT);
 	theCoronaAutoExposure.targetBrightnessSpn->SetResetValue(1.0f);
+
+	theCoronaAutoExposure.everyNthSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_NTH));
+	theCoronaAutoExposure.everyNthSpn->SetScale(1);
+	theCoronaAutoExposure.everyNthSpn->SetLimits(0, 1000);
+	theCoronaAutoExposure.everyNthSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_NTH), EDITTYPE_INT);
+	theCoronaAutoExposure.everyNthSpn->SetResetValue(1);
 
 	theCoronaAutoExposure.passLimitSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_PASS));
 	theCoronaAutoExposure.passLimitSpn->SetScale(1);
@@ -135,6 +142,7 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 			ReleaseISpinner(theCoronaAutoExposure.fromFrameSpn);
 			ReleaseISpinner(theCoronaAutoExposure.toFrameSpn);
 			ReleaseISpinner(theCoronaAutoExposure.targetBrightnessSpn);
+			ReleaseISpinner(theCoronaAutoExposure.everyNthSpn);
 			if (theCoronaAutoExposure.iu)
 				theCoronaAutoExposure.iu->CloseUtility();
 			break;
@@ -155,7 +163,13 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 		case IDC_SPIN_PASS:
 			theCoronaAutoExposure.passLimit = theCoronaAutoExposure.passLimitSpn->GetIVal();
 			break;
+		case IDC_SPIN_NTH:
+			theCoronaAutoExposure.everyNth = theCoronaAutoExposure.everyNthSpn->GetIVal();
+			break;
+		default:
+			break;
 		}
+		break;
 
 	case WM_LBUTTONDOWN:
 	case WM_LBUTTONUP:
@@ -199,6 +213,7 @@ void CoronaAutoExposure::UpdateUI(HWND hWnd) {
 
 	CheckDlgButton(hWnd, IDC_C_SMOOTH, useSmooth);
 
+	everyNthSpn->SetValue(everyNth, false);
 	passLimitSpn->SetValue(passLimit, false);
 	fromFrameSpn->SetValue(fromFrame, false);
 	toFrameSpn->SetValue(toFrame, false);

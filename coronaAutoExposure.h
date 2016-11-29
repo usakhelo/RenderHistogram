@@ -50,10 +50,11 @@ private:
 	ISpinnerControl*  fromFrameSpn;
 	ISpinnerControl*	passLimitSpn;
 	ISpinnerControl*  toFrameSpn;
+	ISpinnerControl*  everyNthSpn;
 	ISpinnerControl*  targetBrightnessSpn;
 
 	bool isAnimRange;
-	int fromFrame, toFrame;
+	int fromFrame, toFrame, everyNth;
 	int fromCalcFrame, toCalcFrame;
 	float minBrVal, maxBrVal, currBrVal;
 	float targetBrightness;

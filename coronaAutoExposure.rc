@@ -25,38 +25,41 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Dialog
 //
 
-IDD_PANEL DIALOGEX 0, 0, 107, 325
+IDD_PANEL DIALOGEX 0, 0, 107, 338
 STYLE DS_SETFONT | WS_CHILD | WS_VISIBLE
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     CONTROL         "Active Time Segment",IDC_R_ACTIVETIME,"Button",BS_AUTORADIOBUTTON | WS_GROUP,9,61,83,10
     CONTROL         "Range:",IDC_R_RANGE,"Button",BS_AUTORADIOBUTTON,9,73,39,10
-    CONTROL         "",IDC_EDIT_FROM,"CustEdit",WS_TABSTOP,46,90,35,10
-    CONTROL         "",IDC_SPIN_FROM,"SpinnerControl",0x0,82,90,7,10
-    CONTROL         "",IDC_EDIT_TO,"CustEdit",WS_TABSTOP,46,103,35,10
-    CONTROL         "",IDC_SPIN_TO,"SpinnerControl",0x0,82,103,7,10
-    PUSHBUTTON      "Render",IDC_DORENDER,29,137,50,14
-    CONTROL         "",IDC_EDIT_TARGET,"CustEdit",WS_TABSTOP,42,254,35,10
-    CONTROL         "",IDC_SPIN_TARGET,"SpinnerControl",0x0,80,254,7,10
-    CONTROL         "Smooth Animation Curve",IDC_C_SMOOTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,269,91,10
-    PUSHBUTTON      "Apply Modifier",IDC_APPLYCAMERA,29,285,50,14
-    PUSHBUTTON      "Close",IDC_CLOSE,29,307,50,14
-    LTEXT           "Highest:",IDC_HI_BRIGHT,9,201,89,11,SS_SUNKEN
-    LTEXT           "Target Brightness:",IDC_STATIC,9,244,89,8
+    CONTROL         "",IDC_EDIT_FROM,"CustEdit",WS_TABSTOP,48,90,35,10
+    CONTROL         "",IDC_SPIN_FROM,"SpinnerControl",0x0,84,90,7,10
+    CONTROL         "",IDC_EDIT_TO,"CustEdit",WS_TABSTOP,48,103,35,10
+    CONTROL         "",IDC_SPIN_TO,"SpinnerControl",0x0,84,103,7,10
+    PUSHBUTTON      "Render",IDC_DORENDER,29,147,50,14
+    CONTROL         "",IDC_EDIT_TARGET,"CustEdit",WS_TABSTOP,42,267,35,10
+    CONTROL         "",IDC_SPIN_TARGET,"SpinnerControl",0x0,80,267,7,10
+    CONTROL         "Smooth Animation Curve",IDC_C_SMOOTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,282,91,10
+    PUSHBUTTON      "Apply Modifier",IDC_APPLYCAMERA,29,298,50,14
+    PUSHBUTTON      "Close",IDC_CLOSE,29,320,50,14
+    LTEXT           "Highest:",IDC_HI_BRIGHT,9,211,89,11,SS_SUNKEN
+    LTEXT           "Target Brightness:",IDC_STATIC,9,257,89,8
     LTEXT           "1. Render frame range to analyze brightness\r\n2. Set Target Brightness\r\n3. Select camera object and apply modifier",IDC_STATIC,4,4,99,43,SS_SUNKEN
-    LTEXT           "From:",IDC_STATIC,27,90,18,8
-    LTEXT           "To:",IDC_STATIC,33,103,12,8
-    GROUPBOX        "Calculate",IDC_STATIC,4,49,99,181
-    GROUPBOX        "Modifier",IDC_STATIC,4,233,99,71
-    LTEXT           "Lowest:",IDC_LOW_BRIGHT,9,215,89,11,SS_SUNKEN
-    LTEXT           "Current:",IDC_CUR_BRIGHT,9,187,89,11,SS_SUNKEN
-    LTEXT           "Frame Brightness:",IDC_STATIC,9,178,89,8
-    LTEXT           "Calculated Frames:",IDC_STATIC,9,154,61,8
-    LTEXT           "",IDC_FRAME_FROM,9,163,41,11,SS_SUNKEN
-    LTEXT           "",IDC_FRAME_TO,54,163,44,11,SS_SUNKEN
-    CONTROL         "",IDC_EDIT_PASS,"CustEdit",WS_TABSTOP,46,119,35,10
-    CONTROL         "",IDC_SPIN_PASS,"SpinnerControl",0x0,82,119,7,10
-    LTEXT           "Pass Limit:",IDC_STATIC,11,119,34,8
+    LTEXT           "From:",IDC_STATIC,27,90,19,8
+    LTEXT           "To:",IDC_STATIC,33,103,13,8
+    GROUPBOX        "Calculate",IDC_STATIC,4,49,99,193
+    GROUPBOX        "Modifier",IDC_STATIC,4,246,99,71
+    LTEXT           "Lowest:",IDC_LOW_BRIGHT,9,225,89,11,SS_SUNKEN
+    LTEXT           "Current:",IDC_CUR_BRIGHT,9,197,89,11,SS_SUNKEN
+    LTEXT           "Frame Brightness:",IDC_STATIC,9,188,89,8
+    LTEXT           "Calculated Frames:",IDC_STATIC,9,164,61,8
+    LTEXT           "",IDC_FRAME_FROM,9,173,41,11,SS_SUNKEN
+    LTEXT           "",IDC_FRAME_TO,54,173,44,11,SS_SUNKEN
+    CONTROL         "",IDC_EDIT_PASS,"CustEdit",WS_TABSTOP,48,131,35,10
+    CONTROL         "",IDC_SPIN_PASS,"SpinnerControl",0x0,84,131,7,10
+    LTEXT           "Pass Limit:",IDC_STATIC,11,131,35,8
+    CONTROL         "",IDC_EDIT_NTH,"CustEdit",WS_TABSTOP,48,116,35,10
+    CONTROL         "",IDC_SPIN_NTH,"SpinnerControl",0x0,84,116,7,10
+    LTEXT           "Every Nth:",IDC_STATIC,10,116,35,8
 END
 
 
@@ -76,7 +79,7 @@ BEGIN
         VERTGUIDE, 42
         VERTGUIDE, 98
         TOPMARGIN, 4
-        BOTTOMMARGIN, 321
+        BOTTOMMARGIN, 334
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -111,17 +114,6 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 //
-// 32766
-//
-
-IDD_PANEL 32766
-BEGIN
-    0x0000
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
 // String Table
 //
 
@@ -143,7 +135,7 @@ BEGIN
     IDS_SELECTION_ERROR     "Camera is not selected"
     IDS_FRAME_ERROR         "Incorrect frame numbers"
     IDS_EMPTY_ARRAY_ERR     "Not Enough Brightness Values Calculated"
-    IDS_RENDER_OVERWRITE    "This will overwrite brightnes values\r\nDo you want to continue?"
+    IDS_RENDER_OVERWRITE    "This will overwrite brightness values\r\nDo you want to continue?"
 END
 
 #endif    // English (United States) resources
