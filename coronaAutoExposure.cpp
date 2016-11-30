@@ -289,17 +289,15 @@ void CoronaAutoExposure::ApplyModifier()
 	//add animated parameter in the same frame range
 	TimeValue startFrame, endFrame;
 	int duration;
-	int delta = GetTicksPerFrame();
+	int delta = GetTicksPerFrame() * everyNth;
 	if (isAnimRange) {
 		Interval frames = ip->GetAnimRange();
 		startFrame = frames.Start();
 		endFrame = frames.End();
-		duration = (int)frames.Duration();
 	}
 	else {
 		startFrame = fromFrame * GetTicksPerFrame();
 		endFrame = toFrame * GetTicksPerFrame();
-		duration = endFrame - startFrame + 1;
 	}
 
 	//calculate EV params
@@ -548,7 +546,7 @@ void CoronaAutoExposure::RenderFrames()
 	else {
 		startFrame = fromFrame * GetTicksPerFrame();
 		endFrame = toFrame * GetTicksPerFrame();
-		duration = endFrame - startFrame + 1;
+		duration = endFrame - startFrame + GetTicksPerFrame();
 	}
 
 	brightArray.removeAll();
