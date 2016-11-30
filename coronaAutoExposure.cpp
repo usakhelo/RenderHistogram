@@ -163,9 +163,15 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 		case IDC_SPIN_PASS:
 			theCoronaAutoExposure.passLimit = theCoronaAutoExposure.passLimitSpn->GetIVal();
 			break;
-		case IDC_SPIN_NTH:
-			theCoronaAutoExposure.everyNth = theCoronaAutoExposure.everyNthSpn->GetIVal();
+		case IDC_SPIN_NTH: {
+			int tempNth = theCoronaAutoExposure.everyNthSpn->GetIVal();
+			if (tempNth < 1) {
+				tempNth = 1;
+				theCoronaAutoExposure.everyNthSpn->SetValue(tempNth, false);
+			}
+			theCoronaAutoExposure.everyNth = tempNth;
 			break;
+		}
 		default:
 			break;
 		}
@@ -531,7 +537,8 @@ void CoronaAutoExposure::RenderFrames()
 
 	TimeValue startFrame, endFrame;
 	int duration;
-	int delta = GetTicksPerFrame();
+	int delta = everyNth * GetTicksPerFrame();
+
 	if (isAnimRange) {
 		Interval frames = ip->GetAnimRange();
 		startFrame = frames.Start();
@@ -545,7 +552,8 @@ void CoronaAutoExposure::RenderFrames()
 	}
 
 	brightArray.removeAll();
-	brightArray.reserve(duration / GetTicksPerFrame());
+	brightArray.reserve(duration / delta);
+	duration = duration / everyNth;
 
 	Renderer *renderer = ip->GetCurrentRenderer(false);
 	auto pBlock = renderer->GetParamBlock(0);
@@ -578,7 +586,7 @@ void CoronaAutoExposure::RenderFrames()
 	for (int frame = startFrame; frame <= endFrame; frame += delta) {
 
 		ip->ProgressUpdate((int)((float)progress / duration * 100.0f));
-		progress += delta;
+		progress += delta / everyNth;
 
 		ip->CurRendererRenderFrame(frame, bm, &rndCB);
 
@@ -603,8 +611,8 @@ void CoronaAutoExposure::RenderFrames()
 		if (currBrVal < minBrVal)
 			minBrVal = currBrVal;
 
-		fromCalcFrame = (int)((float)startFrame / delta);
-		toCalcFrame = (int)((float)frame / delta);
+		fromCalcFrame = (int)((float)startFrame / delta * everyNth);
+		toCalcFrame = (int)((float)frame / delta * everyNth);
 
 		UpdateUI(hPanel);
 
