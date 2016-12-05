@@ -11,8 +11,10 @@
 #include <iparamb2.h>
 #include <iparamm2.h>
 #include <maxtypes.h>
-
+#include <mouseman.h>
 #include <utilapi.h>
+
+
 
 extern TCHAR *GetString(int id);
 extern HINSTANCE hInstance;
@@ -21,6 +23,8 @@ extern HINSTANCE hInstance;
 
 class CoronaAutoExposure : public UtilityObj 
 {
+    friend class ObjPick;
+
 public:
 
 	CoronaAutoExposure();
@@ -52,6 +56,8 @@ private:
 	ISpinnerControl*  toFrameSpn;
 	ISpinnerControl*  everyNthSpn;
 	ISpinnerControl*  targetBrightnessSpn;
+
+	ICustButton*	cameraNodeBtn;
 
 	bool isAnimRange;
 	int fromFrame, toFrame, everyNth;
@@ -92,3 +98,32 @@ public:
 };
 
 static CoronaAutoExposureClassDesc CoronaAutoExposureDesc;
+
+static CommandMode*		lastMode = NULL;
+
+static void SetPickMode(PickModeCallback* p, int w = 0) {
+    if (!p) {
+        GetCOREInterface()->PushCommandMode(lastMode);
+        lastMode = NULL;
+        GetCOREInterface()->ClearPickMode();
+    } else {
+        lastMode = GetCOREInterface()->GetCommandMode();
+        GetCOREInterface()->SetPickMode(p);
+    }
+}
+
+class ObjPick : public PickModeCallback {
+
+		CoronaAutoExposure *parent;
+
+public:		
+    BOOL HitTest(IObjParam *ip,HWND hWnd,ViewExp *vpt,IPoint2 m,int flags);
+    BOOL Pick(IObjParam *ip,ViewExp *vpt);	
+
+    void EnterMode(IObjParam *ip);
+    void ExitMode(IObjParam *ip);
+
+    void SetParentObj(CoronaAutoExposure *obj) { parent = obj; }
+};
+
+static  ObjPick  thePick;

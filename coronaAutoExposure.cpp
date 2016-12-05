@@ -11,6 +11,60 @@
 #include "GetCOREInterface.h"
 #include <maxscript/maxwrapper/bitmaps.h>
 #include <maxscript/maxscript.h>
+#include "custcont.h"
+#include "icolorman.h"
+
+BOOL ObjPick::HitTest(IObjParam *ip, HWND hWnd, ViewExp *vpt, IPoint2 m,
+											int flags)
+{
+	if ( ! vpt || ! vpt->IsAlive() )
+	{
+		DbgAssert(!"Doing HitTest() on invalid view port!");
+		return FALSE;
+	}
+
+	INode *node = ip->PickNode(hWnd, m);
+	if (node == NULL)
+		return FALSE;
+	Object* obj = node->EvalWorldState(0).obj;
+	if ((obj->SuperClassID() == HELPER_CLASS_ID))
+		return FALSE;
+	return TRUE;
+}
+
+void ObjPick::EnterMode(IObjParam *ip)
+{
+	ip->PushPrompt(_M("pick something"));
+}
+
+void ObjPick::ExitMode(IObjParam *ip)
+{
+	ip->PopPrompt();
+}
+
+BOOL ObjPick::Pick(IObjParam *ip,ViewExp *vpt)
+{
+	if ( ! vpt || ! vpt->IsAlive() )
+	{
+		DbgAssert(!"Doing Pick() on invalid view port!");
+		return FALSE;
+	}
+
+	if (vpt->HitCount() == 0)
+		return FALSE;
+
+	INode *node;
+	if ((node = vpt->GetClosestHit()) != NULL) {
+
+		SetPickMode(NULL);
+
+		parent->cameraNodeBtn->SetCheck(FALSE);
+		HWND hw = parent->hPanel;
+		SetDlgItemText(hw, IDC_CAMERA_NODE, _M("Test1"));
+		return FALSE;
+	}
+	return FALSE;
+}
 
 int maxRndProgressCB::Progress( int done, int total ) {
 	if (abort)
@@ -60,6 +114,8 @@ void CoronaAutoExposure::EndEditParams(Interface* ip, IUtil*)
 
 void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 {
+	int numPoints;
+
 	theCoronaAutoExposure.fromFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_FROM));
 	theCoronaAutoExposure.fromFrameSpn->SetScale(1.0f);
 	theCoronaAutoExposure.fromFrameSpn->SetLimits(-1000000, 1000000);
@@ -89,6 +145,12 @@ void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 	theCoronaAutoExposure.passLimitSpn->SetLimits(0, 100000);
 	theCoronaAutoExposure.passLimitSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_PASS), EDITTYPE_INT);
 	theCoronaAutoExposure.passLimitSpn->SetResetValue(1);
+
+	theCoronaAutoExposure.cameraNodeBtn = GetICustButton(GetDlgItem(hWnd, IDC_CAMERA_NODE));
+	theCoronaAutoExposure.cameraNodeBtn->SetButtonDownNotify(TRUE);
+	theCoronaAutoExposure.cameraNodeBtn->SetType(CBT_CHECK);
+	theCoronaAutoExposure.cameraNodeBtn->SetHighlightColor(GREEN_WASH);
+	theCoronaAutoExposure.cameraNodeBtn->SetCheck(FALSE);
 
 	UpdateUI(hWnd);
 }
@@ -143,8 +205,19 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 			ReleaseISpinner(theCoronaAutoExposure.toFrameSpn);
 			ReleaseISpinner(theCoronaAutoExposure.targetBrightnessSpn);
 			ReleaseISpinner(theCoronaAutoExposure.everyNthSpn);
+			ReleaseICustButton(theCoronaAutoExposure.cameraNodeBtn);
+
 			if (theCoronaAutoExposure.iu)
 				theCoronaAutoExposure.iu->CloseUtility();
+			break;
+
+		case IDC_CAMERA_NODE:
+			switch (HIWORD(wParam)) {
+			case BN_BUTTONDOWN:
+				thePick.SetParentObj(&theCoronaAutoExposure);
+				SetPickMode(&thePick);
+				break;
+			}
 			break;
 		}
 		break;
@@ -171,7 +244,7 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 			}
 			theCoronaAutoExposure.everyNth = tempNth;
 			break;
-		}
+											 }
 		default:
 			break;
 		}
@@ -253,7 +326,7 @@ void CoronaAutoExposure::ApplyModifier()
 	node = ip->GetSelNode(0);
 
 	Object *obj = node->GetObjectRef();
-	
+
 	auto scid = obj->SuperClassID();
 	auto cid = obj->ClassID();
 

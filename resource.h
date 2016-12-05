@@ -32,6 +32,8 @@
 #define IDC_FRAME_FROM                  1010
 #define IDC_FROM_TO                     1011
 #define IDC_FRAME_TO                    1011
+#define IDC_CUSTOM1                     1012
+#define IDC_CAMERA_NODE                 1012
 #define IDC_COLOR                       1456
 #define IDC_EDIT                        1490
 #define IDC_EDIT_FROM                   1490
@@ -56,7 +58,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        104
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1008
+#define _APS_NEXT_CONTROL_VALUE         1013
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
