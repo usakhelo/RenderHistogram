@@ -253,6 +253,9 @@ void CoronaAutoExposure::ApplyModifier()
 	node = ip->GetSelNode(0);
 
 	Object *obj = node->GetObjectRef();
+	
+	auto scid = obj->SuperClassID();
+	auto cid = obj->ClassID();
 
 	if (!obj)
 	{
@@ -260,6 +263,19 @@ void CoronaAutoExposure::ApplyModifier()
 		TSTR message = GetString(IDS_SELECTION_ERROR);
 		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
 		return;
+	}
+
+	if (obj->SuperClassID() == GEN_DERIVOB_CLASS_ID)
+	{
+		IDerivedObject *dobj = static_cast<IDerivedObject*>(obj);
+		int modnum = dobj->NumModifiers();
+		if (modnum > 0) {
+			Modifier* modobj = dobj->GetModifier(0);	
+			auto modctype = modobj->ClassID();
+			bool iscoronamod = modctype == Class_ID((ulong)2743551132, (ulong)502132111);
+		}
+		auto rootobj = dobj->GetObjRef();
+		bool iscamera = rootobj->SuperClassID() == CAMERA_CLASS_ID;
 	}
 
 	if (obj->SuperClassID() != CAMERA_CLASS_ID)
