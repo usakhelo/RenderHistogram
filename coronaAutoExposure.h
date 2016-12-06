@@ -23,7 +23,9 @@ extern HINSTANCE hInstance;
 
 class CoronaAutoExposure : public UtilityObj 
 {
-    friend class ObjPick;
+	friend class ObjPick;
+	friend class PickCameraMode;
+	friend class CamPickNodeCallback;
 
 public:
 
@@ -47,6 +49,13 @@ public:
 	FPValue GetCoronaBuffer(Renderer*);
 	void ResetCounters();
 	void UpdateUI(HWND);
+
+	void SetCam(INode *node);
+
+	static void PreOpen(void* param, NotifyInfo* info);
+	static void PreDeleteNode(void* param, NotifyInfo* info);
+
+	INode *camNode;
 
 private:
 	static INT_PTR CALLBACK DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -99,31 +108,22 @@ public:
 
 static CoronaAutoExposureClassDesc CoronaAutoExposureDesc;
 
-static CommandMode*		lastMode = NULL;
-
-static void SetPickMode(PickModeCallback* p, int w = 0) {
-    if (!p) {
-        GetCOREInterface()->PushCommandMode(lastMode);
-        lastMode = NULL;
-        GetCOREInterface()->ClearPickMode();
-    } else {
-        lastMode = GetCOREInterface()->GetCommandMode();
-        GetCOREInterface()->SetPickMode(p);
-    }
-}
-
-class ObjPick : public PickModeCallback {
-
-		CoronaAutoExposure *parent;
-
+class CamPickNodeCallback : public PickNodeCallback {
 public:		
-    BOOL HitTest(IObjParam *ip,HWND hWnd,ViewExp *vpt,IPoint2 m,int flags);
-    BOOL Pick(IObjParam *ip,ViewExp *vpt);	
-
-    void EnterMode(IObjParam *ip);
-    void ExitMode(IObjParam *ip);
-
-    void SetParentObj(CoronaAutoExposure *obj) { parent = obj; }
+	BOOL Filter(INode *node);
 };
 
-static  ObjPick  thePick;
+static CamPickNodeCallback thePickFilt;
+
+class PickCameraMode : public PickModeCallback {
+public:      
+	BOOL HitTest(IObjParam *ip, HWND hWnd, ViewExp *vpt, IPoint2 m, int flags);
+	BOOL Pick(IObjParam *ip, ViewExp *vpt);
+
+	void EnterMode(IObjParam *ip) { theCoronaAutoExposure.cameraNodeBtn->SetCheck(TRUE); ip->PushPrompt(_M("Pick Camera Object"));	}
+	void ExitMode(IObjParam *ip) { theCoronaAutoExposure.cameraNodeBtn->SetCheck(FALSE); ip->PopPrompt();	}
+	BOOL RightClick(IObjParam *ip, ViewExp *vpt) { return TRUE; }
+	PickNodeCallback *GetFilter() {return &thePickFilt;}
+};
+
+static  PickCameraMode  thePick;

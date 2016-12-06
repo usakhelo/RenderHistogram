@@ -14,54 +14,46 @@
 #include "custcont.h"
 #include "icolorman.h"
 
-BOOL ObjPick::HitTest(IObjParam *ip, HWND hWnd, ViewExp *vpt, IPoint2 m,
-											int flags)
+//===========================================================================
+//Camera Picking
+//===========================================================================
+BOOL CamPickNodeCallback::Filter(INode *node)
 {
+	ObjectState os = node->EvalWorldState(theCoronaAutoExposure.ip->GetTime());
+	if (os.obj->SuperClassID()==CAMERA_CLASS_ID) 
+		return TRUE;
+	else 
+		return FALSE;
+}
+
+BOOL PickCameraMode::HitTest(IObjParam *ip, HWND hWnd, ViewExp * vpt, IPoint2 m, int flags) {
+
+
 	if ( ! vpt || ! vpt->IsAlive() )
 	{
-		DbgAssert(!"Doing HitTest() on invalid view port!");
+		DbgAssert(!_T("Invalid viewport!"));
 		return FALSE;
 	}
 
-	INode *node = ip->PickNode(hWnd, m);
-	if (node == NULL)
-		return FALSE;
-	Object* obj = node->EvalWorldState(0).obj;
-	if ((obj->SuperClassID() == HELPER_CLASS_ID))
-		return FALSE;
-	return TRUE;
+	return ip->PickNode(hWnd,m,&thePickFilt) ? TRUE : FALSE;
 }
 
-void ObjPick::EnterMode(IObjParam *ip)
-{
-	ip->PushPrompt(_M("pick something"));
-}
+BOOL PickCameraMode::Pick(IObjParam *ip, ViewExp *vpt) {
 
-void ObjPick::ExitMode(IObjParam *ip)
-{
-	ip->PopPrompt();
-}
-
-BOOL ObjPick::Pick(IObjParam *ip,ViewExp *vpt)
-{
 	if ( ! vpt || ! vpt->IsAlive() )
 	{
-		DbgAssert(!"Doing Pick() on invalid view port!");
+		DbgAssert(!_T("Invalid viewport!"));
 		return FALSE;
 	}
 
-	if (vpt->HitCount() == 0)
-		return FALSE;
-
-	INode *node;
-	if ((node = vpt->GetClosestHit()) != NULL) {
-
-		SetPickMode(NULL);
-
-		parent->cameraNodeBtn->SetCheck(FALSE);
-		HWND hw = parent->hPanel;
-		SetDlgItemText(hw, IDC_CAMERA_NODE, _M("Test1"));
-		return FALSE;
+	INode *node = vpt->GetClosestHit();
+	if (node) {
+		ObjectState os = node->EvalWorldState(theCoronaAutoExposure.ip->GetTime());
+		if (os.obj->SuperClassID() == CAMERA_CLASS_ID) {
+			theCoronaAutoExposure.cameraNodeBtn->SetCheck(FALSE);
+			theCoronaAutoExposure.SetCam(node);
+			return TRUE;
+		}
 	}
 	return FALSE;
 }
@@ -72,6 +64,10 @@ int maxRndProgressCB::Progress( int done, int total ) {
 	else   
 		return (RENDPROG_CONTINUE);
 }
+
+//===========================================================================
+//Utility Methods
+//===========================================================================
 
 CoronaAutoExposure::CoronaAutoExposure()
 	: hPanel(nullptr)
@@ -110,6 +106,7 @@ void CoronaAutoExposure::EndEditParams(Interface* ip, IUtil*)
 	this->iu = nullptr;
 	ip->DeleteRollupPage(hPanel);
 	hPanel = nullptr;
+	GetCOREInterface()->ClearPickMode();
 }
 
 void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
@@ -147,16 +144,45 @@ void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 	theCoronaAutoExposure.passLimitSpn->SetResetValue(1);
 
 	theCoronaAutoExposure.cameraNodeBtn = GetICustButton(GetDlgItem(hWnd, IDC_CAMERA_NODE));
-	theCoronaAutoExposure.cameraNodeBtn->SetButtonDownNotify(TRUE);
 	theCoronaAutoExposure.cameraNodeBtn->SetType(CBT_CHECK);
 	theCoronaAutoExposure.cameraNodeBtn->SetHighlightColor(GREEN_WASH);
 	theCoronaAutoExposure.cameraNodeBtn->SetCheck(FALSE);
+
+	RegisterNotification(PreOpen, this, NOTIFY_FILE_PRE_OPEN);
+	RegisterNotification(PreDeleteNode, this, NOTIFY_SCENE_PRE_DELETED_NODE);
 
 	UpdateUI(hWnd);
 }
 
 void CoronaAutoExposure::Destroy(HWND /*handle*/)
 {
+	UnRegisterNotification(PreOpen, this, NOTIFY_FILE_PRE_OPEN);
+	UnRegisterNotification(PreDeleteNode, this, NOTIFY_SCENE_PRE_DELETED_NODE);
+}
+
+void CoronaAutoExposure::PreOpen(void* param, NotifyInfo* info) {
+	CoronaAutoExposure* shapeCheck = (CoronaAutoExposure*)param;
+	if (shapeCheck == NULL)
+		return;
+
+	shapeCheck->SetCam(NULL);
+}
+
+void CoronaAutoExposure::PreDeleteNode(void* param, NotifyInfo* arg) {
+	CoronaAutoExposure* utlityObj = (CoronaAutoExposure*)param;
+	if (utlityObj == NULL)
+		return;
+
+	INode* deletedNode = (INode*)arg->callParam;
+	if (deletedNode == utlityObj->camNode)
+		utlityObj->SetCam(NULL);
+}
+
+void CoronaAutoExposure::SetCam(INode *node) {
+	camNode = node;
+	WStr label;
+	label = node != NULL ? node->GetName() : _M("Select Camera");
+	SetDlgItemText(hPanel, IDC_CAMERA_NODE, label);
 }
 
 INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -212,12 +238,7 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 			break;
 
 		case IDC_CAMERA_NODE:
-			switch (HIWORD(wParam)) {
-			case BN_BUTTONDOWN:
-				thePick.SetParentObj(&theCoronaAutoExposure);
-				SetPickMode(&thePick);
-				break;
-			}
+			GetCOREInterface()->SetPickMode(&thePick);
 			break;
 		}
 		break;
@@ -311,6 +332,10 @@ static DWORD WINAPI fn(LPVOID arg)
 {
 	return(0);
 }
+
+//===========================================================================
+//Core Methods
+//===========================================================================
 
 void CoronaAutoExposure::ApplyModifier()
 {

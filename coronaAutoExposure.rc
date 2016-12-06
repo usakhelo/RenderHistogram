@@ -25,7 +25,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Dialog
 //
 
-IDD_PANEL DIALOGEX 0, 0, 107, 396
+IDD_PANEL DIALOGEX 0, 0, 107, 362
 STYLE DS_SETFONT | WS_CHILD | WS_VISIBLE
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
@@ -36,18 +36,18 @@ BEGIN
     CONTROL         "",IDC_EDIT_TO,"CustEdit",WS_TABSTOP,48,103,35,10
     CONTROL         "",IDC_SPIN_TO,"SpinnerControl",0x0,84,103,7,10
     PUSHBUTTON      "Render",IDC_DORENDER,29,147,50,14
-    CONTROL         "",IDC_EDIT_TARGET,"CustEdit",WS_TABSTOP,42,267,35,10
-    CONTROL         "",IDC_SPIN_TARGET,"SpinnerControl",0x0,80,267,7,10
-    CONTROL         "Smooth Animation Curve",IDC_C_SMOOTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,282,91,10
-    PUSHBUTTON      "Apply Modifier",IDC_APPLYCAMERA,29,298,50,14
-    PUSHBUTTON      "Close",IDC_CLOSE,29,378,50,14
+    CONTROL         "",IDC_EDIT_TARGET,"CustEdit",WS_TABSTOP,42,290,35,10
+    CONTROL         "",IDC_SPIN_TARGET,"SpinnerControl",0x0,80,290,7,10
+    CONTROL         "Smooth Animation Curve",IDC_C_SMOOTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,305,91,10
+    PUSHBUTTON      "Apply Modifier",IDC_APPLYCAMERA,29,321,50,14
+    PUSHBUTTON      "Close",IDC_CLOSE,29,344,50,14
     LTEXT           "Highest:",IDC_HI_BRIGHT,9,211,89,11,SS_SUNKEN
-    LTEXT           "Target Brightness:",IDC_STATIC,9,257,89,8
+    LTEXT           "Target Brightness:",IDC_STATIC,9,280,89,8
     LTEXT           "1. Render frame range to analyze brightness\r\n2. Set Target Brightness\r\n3. Select camera object and apply modifier",IDC_STATIC,4,4,99,43,SS_SUNKEN
     LTEXT           "From:",IDC_STATIC,27,90,19,8
     LTEXT           "To:",IDC_STATIC,33,103,13,8
     GROUPBOX        "Calculate",IDC_STATIC,4,49,99,193
-    GROUPBOX        "Modifier",IDC_STATIC,4,246,99,71
+    GROUPBOX        "Modifier",IDC_STATIC,4,246,99,94
     LTEXT           "Lowest:",IDC_LOW_BRIGHT,9,225,89,11,SS_SUNKEN
     LTEXT           "Current:",IDC_CUR_BRIGHT,9,197,89,11,SS_SUNKEN
     LTEXT           "Frame Brightness:",IDC_STATIC,9,188,89,8
@@ -60,7 +60,7 @@ BEGIN
     CONTROL         "",IDC_EDIT_NTH,"CustEdit",WS_TABSTOP,48,116,35,10
     CONTROL         "",IDC_SPIN_NTH,"SpinnerControl",0x0,84,116,7,10
     LTEXT           "Every Nth:",IDC_STATIC,10,116,35,8
-    CONTROL         "Camera Node",IDC_CAMERA_NODE,"CustButton",WS_TABSTOP,29,322,50,14
+    CONTROL         "Camera Node",IDC_CAMERA_NODE,"CustButton",WS_TABSTOP,29,260,50,14
 END
 
 
@@ -80,7 +80,7 @@ BEGIN
         VERTGUIDE, 42
         VERTGUIDE, 98
         TOPMARGIN, 4
-        BOTTOMMARGIN, 392
+        BOTTOMMARGIN, 358
     END
 END
 #endif    // APSTUDIO_INVOKED
