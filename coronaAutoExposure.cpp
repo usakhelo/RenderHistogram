@@ -205,7 +205,6 @@ INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam,
 			theCoronaAutoExposure.RenderFrames();
 			break;
 		case IDC_APPLYCAMERA:
-			//theCoronaAutoExposure.TestFunc();
 			theCoronaAutoExposure.ApplyModifier();
 			break;
 
@@ -304,9 +303,8 @@ void CoronaAutoExposure::UpdateUI(HWND hWnd) {
 	str.printf(_T("%d"), toCalcFrame);
 	SetDlgItemText(hWnd, IDC_FRAME_TO, str.ToMCHAR());
 
-	
 	str.printf(_T("%s"), camNode != nullptr ? camNode->GetName() : _M("Select Camera"));
-	SetDlgItemText(hPanel, IDC_CAMERA_NODE, str);
+	SetDlgItemText(hWnd, IDC_CAMERA_NODE, str);
 
 	CheckDlgButton(hWnd, IDC_R_ACTIVETIME, isAnimRange);
 	CheckDlgButton(hWnd, IDC_R_RANGE, !isAnimRange);
