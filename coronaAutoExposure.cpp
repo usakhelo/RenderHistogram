@@ -81,6 +81,7 @@ CoronaAutoExposure::CoronaAutoExposure()
 	fromCalcFrame = toCalcFrame = 0;
 	minBrVal = maxBrVal = currBrVal = 0.0f;
 	passLimit = 50;
+	camNode = nullptr;
 }
 
 CoronaAutoExposure::~CoronaAutoExposure()
@@ -165,7 +166,7 @@ void CoronaAutoExposure::PreOpen(void* param, NotifyInfo* info) {
 	if (shapeCheck == NULL)
 		return;
 
-	shapeCheck->SetCam(NULL);
+	shapeCheck->SetCam(nullptr);
 }
 
 void CoronaAutoExposure::PreDeleteNode(void* param, NotifyInfo* arg) {
@@ -175,13 +176,13 @@ void CoronaAutoExposure::PreDeleteNode(void* param, NotifyInfo* arg) {
 
 	INode* deletedNode = (INode*)arg->callParam;
 	if (deletedNode == utlityObj->camNode)
-		utlityObj->SetCam(NULL);
+		utlityObj->SetCam(nullptr);
 }
 
 void CoronaAutoExposure::SetCam(INode *node) {
 	camNode = node;
 	WStr label;
-	label = node != NULL ? node->GetName() : _M("Select Camera");
+	label = node != nullptr ? node->GetName() : _M("Select Camera");
 	SetDlgItemText(hPanel, IDC_CAMERA_NODE, label);
 }
 
@@ -302,6 +303,10 @@ void CoronaAutoExposure::UpdateUI(HWND hWnd) {
 	SetDlgItemText(hWnd, IDC_FRAME_FROM, str.ToMCHAR());
 	str.printf(_T("%d"), toCalcFrame);
 	SetDlgItemText(hWnd, IDC_FRAME_TO, str.ToMCHAR());
+
+	
+	str.printf(_T("%s"), camNode != nullptr ? camNode->GetName() : _M("Select Camera"));
+	SetDlgItemText(hPanel, IDC_CAMERA_NODE, str);
 
 	CheckDlgButton(hWnd, IDC_R_ACTIVETIME, isAnimRange);
 	CheckDlgButton(hWnd, IDC_R_RANGE, !isAnimRange);
@@ -602,7 +607,6 @@ void CoronaAutoExposure::RenderFrames()
 		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
 		return;
 	}
-#pragma message(TODO("check for selected camera object too"))
 
 	Renderer* currRenderer = ip->GetCurrentRenderer(false);
 	MSTR rendName;
@@ -628,6 +632,9 @@ void CoronaAutoExposure::RenderFrames()
 		if (result == IDNO)
 			return;
 	}
+
+	camNode = cam;
+#pragma message(TODO("check for selected camera object too"))
 
 	ResetCounters();
 	UpdateUI(hPanel);
