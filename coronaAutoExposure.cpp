@@ -13,7 +13,7 @@
 #include <maxscript/maxscript.h>
 #include "custcont.h"
 #include "icolorman.h"
-
+#include <INodeValidity.h>
 //===========================================================================
 //Camera Picking
 //===========================================================================
@@ -114,43 +114,54 @@ void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 {
 	int numPoints;
 
-	theCoronaAutoExposure.fromFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_FROM));
-	theCoronaAutoExposure.fromFrameSpn->SetScale(1.0f);
-	theCoronaAutoExposure.fromFrameSpn->SetLimits(-1000000, 1000000);
-	theCoronaAutoExposure.fromFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_FROM), EDITTYPE_INT);
-	theCoronaAutoExposure.fromFrameSpn->SetResetValue(0);
+	fromFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_FROM));
+	fromFrameSpn->SetScale(1.0f);
+	fromFrameSpn->SetLimits(-1000000, 1000000);
+	fromFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_FROM), EDITTYPE_INT);
+	fromFrameSpn->SetResetValue(0);
 
-	theCoronaAutoExposure.toFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TO));
-	theCoronaAutoExposure.toFrameSpn->SetScale(1.0f);
-	theCoronaAutoExposure.toFrameSpn->SetLimits(-1000000, 1000000);
-	theCoronaAutoExposure.toFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
-	theCoronaAutoExposure.toFrameSpn->SetResetValue(0);
+	toFrameSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TO));
+	toFrameSpn->SetScale(1.0f);
+	toFrameSpn->SetLimits(-1000000, 1000000);
+	toFrameSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TO), EDITTYPE_INT);
+	toFrameSpn->SetResetValue(0);
 
-	theCoronaAutoExposure.targetBrightnessSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TARGET));
-	theCoronaAutoExposure.targetBrightnessSpn->SetScale(0.01f);
-	theCoronaAutoExposure.targetBrightnessSpn->SetLimits(-1000.0f, 1000.0f);
-	theCoronaAutoExposure.targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TARGET), EDITTYPE_FLOAT);
-	theCoronaAutoExposure.targetBrightnessSpn->SetResetValue(1.0f);
+	targetBrightnessSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_TARGET));
+	targetBrightnessSpn->SetScale(0.01f);
+	targetBrightnessSpn->SetLimits(-1000.0f, 1000.0f);
+	targetBrightnessSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_TARGET), EDITTYPE_FLOAT);
+	targetBrightnessSpn->SetResetValue(1.0f);
 
-	theCoronaAutoExposure.everyNthSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_NTH));
-	theCoronaAutoExposure.everyNthSpn->SetScale(1);
-	theCoronaAutoExposure.everyNthSpn->SetLimits(0, 1000);
-	theCoronaAutoExposure.everyNthSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_NTH), EDITTYPE_INT);
-	theCoronaAutoExposure.everyNthSpn->SetResetValue(1);
+	everyNthSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_NTH));
+	everyNthSpn->SetScale(1);
+	everyNthSpn->SetLimits(0, 1000);
+	everyNthSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_NTH), EDITTYPE_INT);
+	everyNthSpn->SetResetValue(1);
 
-	theCoronaAutoExposure.passLimitSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_PASS));
-	theCoronaAutoExposure.passLimitSpn->SetScale(1);
-	theCoronaAutoExposure.passLimitSpn->SetLimits(0, 100000);
-	theCoronaAutoExposure.passLimitSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_PASS), EDITTYPE_INT);
-	theCoronaAutoExposure.passLimitSpn->SetResetValue(1);
+	passLimitSpn = GetISpinner(GetDlgItem(hWnd, IDC_SPIN_PASS));
+	passLimitSpn->SetScale(1);
+	passLimitSpn->SetLimits(0, 100000);
+	passLimitSpn->LinkToEdit(GetDlgItem(hWnd, IDC_EDIT_PASS), EDITTYPE_INT);
+	passLimitSpn->SetResetValue(1);
 
-	theCoronaAutoExposure.cameraNodeBtn = GetICustButton(GetDlgItem(hWnd, IDC_CAMERA_NODE));
-	theCoronaAutoExposure.cameraNodeBtn->SetType(CBT_CHECK);
-	theCoronaAutoExposure.cameraNodeBtn->SetHighlightColor(GREEN_WASH);
-	theCoronaAutoExposure.cameraNodeBtn->SetCheck(FALSE);
+	cameraNodeBtn = GetICustButton(GetDlgItem(hWnd, IDC_CAMERA_NODE));
+	cameraNodeBtn->SetType(CBT_CHECK);
+	cameraNodeBtn->SetHighlightColor(GREEN_WASH);
+	cameraNodeBtn->SetCheck(FALSE);
 
 	RegisterNotification(PreOpen, this, NOTIFY_FILE_PRE_OPEN);
 	RegisterNotification(PreDeleteNode, this, NOTIFY_SCENE_PRE_DELETED_NODE);
+	
+
+	if (camNode != nullptr) {
+		INodeValidity *nodeValidity = static_cast<INodeValidity*>(camNode->GetInterface(NODEVALIDITY_INTERFACE));
+		if (nodeValidity == nullptr) {   //seems like prevents crash after scene reset
+			camNode = nullptr;
+		}
+	}
+
+	if (camNode != nullptr && camNode->GetObjectRef() == nullptr)
+		camNode = nullptr;
 
 	UpdateUI(hWnd);
 }
@@ -162,11 +173,11 @@ void CoronaAutoExposure::Destroy(HWND /*handle*/)
 }
 
 void CoronaAutoExposure::PreOpen(void* param, NotifyInfo* info) {
-	CoronaAutoExposure* shapeCheck = (CoronaAutoExposure*)param;
-	if (shapeCheck == NULL)
+	CoronaAutoExposure* utlityObj = (CoronaAutoExposure*)param;
+	if (utlityObj == NULL)
 		return;
 
-	shapeCheck->SetCam(nullptr);
+	utlityObj->SetCam(nullptr);
 }
 
 void CoronaAutoExposure::PreDeleteNode(void* param, NotifyInfo* arg) {
@@ -175,15 +186,16 @@ void CoronaAutoExposure::PreDeleteNode(void* param, NotifyInfo* arg) {
 		return;
 
 	INode* deletedNode = (INode*)arg->callParam;
-	if (deletedNode == utlityObj->camNode)
+	if (deletedNode == utlityObj->camNode) {
 		utlityObj->SetCam(nullptr);
+	}
 }
 
 void CoronaAutoExposure::SetCam(INode *node) {
 	camNode = node;
 	WStr label;
 	label = node != nullptr ? node->GetName() : _M("Select Camera");
-	SetDlgItemText(hPanel, IDC_CAMERA_NODE, label);
+  cameraNodeBtn->SetText(label);
 }
 
 INT_PTR CALLBACK CoronaAutoExposure::DlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -304,7 +316,7 @@ void CoronaAutoExposure::UpdateUI(HWND hWnd) {
 	SetDlgItemText(hWnd, IDC_FRAME_TO, str.ToMCHAR());
 
 	str.printf(_T("%s"), camNode != nullptr ? camNode->GetName() : _M("Select Camera"));
-	SetDlgItemText(hWnd, IDC_CAMERA_NODE, str);
+  cameraNodeBtn->SetText(str);
 
 	CheckDlgButton(hWnd, IDC_R_ACTIVETIME, isAnimRange);
 	CheckDlgButton(hWnd, IDC_R_RANGE, !isAnimRange);
@@ -342,21 +354,16 @@ static DWORD WINAPI fn(LPVOID arg)
 
 void CoronaAutoExposure::ApplyModifier()
 {
-	if (ip->GetSelNodeCount() > 1 || ip->GetSelNodeCount() < 1)
-	{
+	if (camNode == nullptr) {
 		TSTR title = GetString(IDS_CLASS_NAME);
-		TSTR message = GetString(IDS_SELECTIONCOUNT_ERROR);
+		TSTR message = GetString(IDS_SELECTION_ERROR);
 		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
 		return;
 	}
 
-	INode *node;
-	node = ip->GetSelNode(0);
-
-	Object *obj = node->GetObjectRef();
-
-	auto scid = obj->SuperClassID();
-	auto cid = obj->ClassID();
+	Object *obj = camNode->GetObjectRef();
+	Modifier *coronaCameraMod = nullptr;
+	IDerivedObject *dobj = nullptr;
 
 	if (!obj)
 	{
@@ -368,15 +375,23 @@ void CoronaAutoExposure::ApplyModifier()
 
 	if (obj->SuperClassID() == GEN_DERIVOB_CLASS_ID)
 	{
-		IDerivedObject *dobj = static_cast<IDerivedObject*>(obj);
-		int modnum = dobj->NumModifiers();
-		if (modnum > 0) {
-			Modifier* modobj = dobj->GetModifier(0);	
-			auto modctype = modobj->ClassID();
-			bool iscoronamod = modctype == Class_ID((ulong)2743551132, (ulong)502132111);
-		}
+		dobj = static_cast<IDerivedObject*>(obj);
+
 		auto rootobj = dobj->GetObjRef();
-		bool iscamera = rootobj->SuperClassID() == CAMERA_CLASS_ID;
+		if (rootobj->SuperClassID() == CAMERA_CLASS_ID) {
+			obj = rootobj;
+		} else {
+			TSTR title = GetString(IDS_CLASS_NAME);
+			TSTR message = GetString(IDS_SELECTIONTYPE_ERROR);
+			MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
+			return;
+		}
+
+		if (dobj->NumModifiers() > 0) {
+			Modifier* modobj = dobj->GetModifier(0); //upper modifier
+			if (modobj->ClassID() == Class_ID((ulong)2743551132, (ulong)502132111))
+				coronaCameraMod = modobj;
+		}
 	}
 
 	if (obj->SuperClassID() != CAMERA_CLASS_ID)
@@ -394,14 +409,6 @@ void CoronaAutoExposure::ApplyModifier()
 		MessageBox(hPanel, message, title, MB_ICONEXCLAMATION);
 		return;
 	}
-
-	IDerivedObject *dobj = CreateDerivedObject(obj);
-
-	Modifier *coronaCameraMod = (Modifier *)CreateInstance(
-		OSM_CLASS_ID, Class_ID((ulong)-1551416164, (ulong)502132111));
-
-	IParamBlock2* coronaModPBlock = ((Animatable*)coronaCameraMod)->GetParamBlock(0);
-	assert(coronaModPBlock);
 
 	//add animated parameter in the same frame range
 	TimeValue startFrame, endFrame;
@@ -429,13 +436,29 @@ void CoronaAutoExposure::ApplyModifier()
 	if (useSmooth)
 		SmoothCurve(evArray);
 
+	if (dobj == nullptr)
+		dobj = CreateDerivedObject(obj);
+
+	bool newmod = false;
+	if (coronaCameraMod == nullptr) {
+		coronaCameraMod = (Modifier *)CreateInstance(OSM_CLASS_ID, Class_ID((ulong)2743551132, (ulong)502132111));
+		newmod = true;
+	}
+
+	IParamBlock2* coronaModPBlock = ((Animatable*)coronaCameraMod)->GetParamBlock(0);
+	assert(coronaModPBlock);
+
 	BOOL enableEV = true;
 
 	ParamBlockDesc2* pbdesc = coronaModPBlock->GetDesc();
 	int param_index = pbdesc->NameToIndex(_T("simpleExposure"));
 	const ParamDef* param_def = pbdesc->GetParamDefByIndex(param_index);
 
-	Control *controller = (Control *)CreateInstance(CTRL_FLOAT_CLASS_ID, Class_ID(LININTERP_FLOAT_CLASS_ID, 0));
+	Control *controller = coronaModPBlock->GetControllerByID(param_def->ID, 0);
+	if ( controller != nullptr ) {
+		controller->DeleteThis();
+	}
+	controller = (Control *)CreateInstance(CTRL_FLOAT_CLASS_ID, Class_ID(LININTERP_FLOAT_CLASS_ID, 0));
 	coronaModPBlock->SetControllerByID(param_def->ID, 0, controller, true);
 	coronaModPBlock->SetValueByName<BOOL>(_T("overrideSimpleExposure"), enableEV, 0);
 
@@ -450,9 +473,10 @@ void CoronaAutoExposure::ApplyModifier()
 	}
 	ResumeAnimate();
 
-	dobj->AddModifier(coronaCameraMod);
-
-	node->SetObjectRef(dobj);
+	if(newmod) {
+		dobj->AddModifier(coronaCameraMod);
+		camNode->SetObjectRef(dobj);
+	}
 }
 
 void CoronaAutoExposure::SmoothCurve(MaxSDK::Array<float>& evArray) {
