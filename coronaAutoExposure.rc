@@ -48,7 +48,7 @@ BEGIN
     PUSHBUTTON      "Close",IDC_CLOSE,29,345,50,14
     LTEXT           "Highest:",IDC_HI_BRIGHT,9,211,89,11,SS_SUNKEN
     LTEXT           "Target Brightness:",IDC_STATIC,9,278,89,8
-    LTEXT           "1. Render frame range to analyze brightness\r\n2. Set Target Brightness\r\n3. Select camera object and apply modifier",IDC_STATIC,4,4,99,43,SS_SUNKEN
+    LTEXT           "1. Render frame range to analyze brightness\r\n2. Set Target Brightness\r\n3. Select camera if needed and apply modifier",IDC_STATIC,4,4,99,43,SS_SUNKEN
     LTEXT           "From:",IDC_STATIC,27,90,19,8
     LTEXT           "To:",IDC_STATIC,33,103,13,8
     GROUPBOX        "Calculate",IDC_STATIC,4,49,99,193
