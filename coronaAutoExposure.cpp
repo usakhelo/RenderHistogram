@@ -152,7 +152,6 @@ void CoronaAutoExposure::Init(HWND hWnd/*handle*/)
 	RegisterNotification(PreOpen, this, NOTIFY_FILE_PRE_OPEN);
 	RegisterNotification(PreDeleteNode, this, NOTIFY_SCENE_PRE_DELETED_NODE);
 	
-
 	if (camNode != nullptr) {
 		INodeValidity *nodeValidity = static_cast<INodeValidity*>(camNode->GetInterface(NODEVALIDITY_INTERFACE));
 		if (nodeValidity == nullptr) {   //seems like prevents crash after scene reset
@@ -170,6 +169,8 @@ void CoronaAutoExposure::Destroy(HWND /*handle*/)
 {
 	UnRegisterNotification(PreOpen, this, NOTIFY_FILE_PRE_OPEN);
 	UnRegisterNotification(PreDeleteNode, this, NOTIFY_SCENE_PRE_DELETED_NODE);
+
+	SetCam(nullptr);
 }
 
 void CoronaAutoExposure::PreOpen(void* param, NotifyInfo* info) {
@@ -445,6 +446,9 @@ void CoronaAutoExposure::ApplyModifier()
 		newmod = true;
 	}
 
+	if (!coronaCameraMod->IsEnabled())
+		coronaCameraMod->EnableMod();
+
 	IParamBlock2* coronaModPBlock = ((Animatable*)coronaCameraMod)->GetParamBlock(0);
 	assert(coronaModPBlock);
 
@@ -458,7 +462,9 @@ void CoronaAutoExposure::ApplyModifier()
 	if ( controller != nullptr ) {
 		controller->DeleteThis();
 	}
-	controller = (Control *)CreateInstance(CTRL_FLOAT_CLASS_ID, Class_ID(LININTERP_FLOAT_CLASS_ID, 0));
+
+	int interp = everyNth > 3 ? HYBRIDINTERP_FLOAT_CLASS_ID : LININTERP_FLOAT_CLASS_ID;
+	controller = (Control *)CreateInstance(CTRL_FLOAT_CLASS_ID, Class_ID(interp, 0));
 	coronaModPBlock->SetControllerByID(param_def->ID, 0, controller, true);
 	coronaModPBlock->SetValueByName<BOOL>(_T("overrideSimpleExposure"), enableEV, 0);
 
